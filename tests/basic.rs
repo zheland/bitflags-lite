@@ -2,7 +2,7 @@
 
 #![allow(unused_crate_dependencies, reason = "okay in tests")]
 
-use bitflags_lite::{BitFlags, BitFlagsAny, BitFlagsSet};
+use bitflags_lite::{BitFlags, BitFlagsSpec};
 
 /// A tag for permissions bit flags allowing only valid bit combinations.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
@@ -16,9 +16,10 @@ const READ: Perms = Perms::from_bits(1 << 0).unwrap();
 const WRITE: Perms = Perms::from_bits(1 << 1).unwrap();
 const EXEC: Perms = Perms::from_bits(1 << 2).unwrap();
 
-impl BitFlagsSet<u32> for PermsTag {
+impl BitFlagsSpec<u32> for PermsTag {
     const EMPTY_BITS: u32 = 0;
-    const ALL_BITS: u32 = (1 << 3) - 1;
+    const ALL_VALID_BITS: u32 = (1 << 3) - 1;
+    type AnyBitsAllowed = bitflags_lite::False;
 }
 
 /// A tag for permissions bit flags allowing any bit combinations.
@@ -33,12 +34,11 @@ const READ_ANY: PermsAny = PermsAny::from_bits(1 << 0).unwrap();
 const WRITE_ANY: PermsAny = PermsAny::from_bits(1 << 1).unwrap();
 const EXEC_ANY: PermsAny = PermsAny::from_bits(1 << 2).unwrap();
 
-impl BitFlagsSet<u32> for PermsAnyTag {
+impl BitFlagsSpec<u32> for PermsAnyTag {
     const EMPTY_BITS: u32 = 0;
-    const ALL_BITS: u32 = (1 << 3) - 1;
+    const ALL_VALID_BITS: u32 = (1 << 3) - 1;
+    type AnyBitsAllowed = bitflags_lite::True;
 }
-
-impl BitFlagsAny for PermsAnyTag {}
 
 #[test]
 fn test_empty() {
@@ -50,7 +50,7 @@ fn test_empty() {
 
 #[test]
 fn test_all() {
-    let flags = Perms::all();
+    let flags = Perms::all_valid();
     assert!(!flags.is_empty());
     assert_eq!(flags.bits(), 0b111);
     assert_eq!(flags.into_iter().len(), 3);
