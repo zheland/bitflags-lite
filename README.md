@@ -1,4 +1,3 @@
-
 # bitflags-lite: Lightweight generics-based bitflags
 
 <!---
@@ -25,6 +24,7 @@ defines which bits are valid through the `BitFlagsSet` trait.
 The crate is `no_std` and `no_alloc`.
 It is designed to be simple, predictable, and const-friendly.
 
+
 ## Features
 
 - Macro-free: No declarative or procedural macros are required.
@@ -34,19 +34,21 @@ It is designed to be simple, predictable, and const-friendly.
 - Optional `serde`: Serialize and deserialize flags as binary strings.
 - Optional `bytemuck`: Use flags in plain-old-data contexts.
 
+
 ## Usage
 
 ```toml
 [dependencies]
-bitflags-lite = "0.1.0"
+bitflags-lite = "0.1.0-dev.0"
 ```
 
 With optional features:
 
 ```toml
 [dependencies]
-bitflags-lite = { version = "0.1.0", features = [ "serde", "bytemuck" ] }
+bitflags-lite = { version = "0.1.0-dev.0", features = [ "serde", "bytemuck" ] }
 ```
+
 
 ## Usage
 
@@ -65,7 +67,7 @@ impl BitFlagsSet<u32> for PermissionsTag {
 
 type Permissions = BitFlags<u32, PermissionsTag>;
 
-const NONE: Permissions = Permissions::empty().unwrap();
+// Compile-time const unwrapping is fine.
 const READ: Permissions = Permissions::from_bits(1 << 0).unwrap();
 const WRITE: Permissions = Permissions::from_bits(1 << 1).unwrap();
 const EXEC: Permissions = Permissions::from_bits(1 << 2).unwrap();
@@ -106,6 +108,7 @@ type RawFlags = BitFlags<u8, RawTag>;
 let raw = RawFlags::from_bits_retain(0xFF);
 ```
 
+
 ## Documentation
 
 [API Documentation]
@@ -119,6 +122,7 @@ let raw = RawFlags::from_bits_retain(0xFF);
 - `bytemuck`: implements `Zeroable` and `Pod` when `T` does, allowing it to be
 used in plain-old-data contexts.
 
+
 ## License
 
 Licensed under either of
@@ -127,6 +131,7 @@ Licensed under either of
 - MIT license ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
 
 at your option.
+
 
 ## Contribution
 

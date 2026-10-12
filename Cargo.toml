@@ -20,6 +20,13 @@ serde = [ "dep:serde" ]
 bytemuck = { package = "bytemuck", version = "1.25.2", optional = true, default-features = false }
 serde = { package = "serde", version = "1.0.229", optional = true, default-features = false }
 
+[dev-dependencies]
+version-sync = "0.9.5"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [lints.rust]
 rust_2018_idioms = { level = "warn", priority = -1 }
 future_incompatible = "warn"

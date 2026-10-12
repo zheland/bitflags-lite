@@ -1,7 +1,4 @@
-#![no_std]
-#![cfg_attr(docsrs, feature(doc_cfg))]
-
-//! Lightweight generic-based bitflags.
+//! Lightweight generics-based bitflags.
 //!
 //! This crate provides [`BitFlags`], a `#[repr(transparent)]` wrapper around an
 //! unsigned integer that adds a compile-time tag type. The tag type distinguishes
@@ -10,6 +7,14 @@
 //!
 //! The crate is `no_std` and `no_alloc`. Optional `serde` and `bytemuck` support
 //! can be enabled through features.
+
+#![no_std]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
+#[cfg(all(test, not(doc)))]
+mod integration_tests_deps {
+    use version_sync as _;
+}
 
 use core::any::type_name;
 use core::borrow::{Borrow, BorrowMut};
@@ -34,8 +39,9 @@ use serde::{Deserialize, Serialize};
 /// Associates a bit-storage type `T` with the set of bits that are valid for a
 /// particular [`BitFlags`] tag.
 ///
-/// Implement this trait for the tag type `U` in `BitFlags<T, U>`. The constants
-/// define which bit patterns are considered empty and which bits are valid.
+/// Implement this trait for the tag type `U` in `BitFlags<T, U>`.
+/// The constants define which bit patterns are considered empty and which bits
+/// are valid.
 ///
 /// # Examples
 ///
@@ -51,8 +57,14 @@ use serde::{Deserialize, Serialize};
 ///
 /// type Permissions = BitFlags<u32, PermissionsTag>;
 ///
-/// let read = Permissions::from_bits(1 << 0).unwrap();
-/// assert!(read.contains(read));
+/// const READ: Permissions = Permissions::from_bits(1 << 0).unwrap();
+/// const WRITE: Permissions = Permissions::from_bits(1 << 1).unwrap();
+/// const EXEC: Permissions = Permissions::from_bits(1 << 2).unwrap();
+///
+/// assert_eq!(Permissions::from_bits(0b1), Some(READ));
+/// assert_eq!(Permissions::from_bits(0b11), Some(READ | WRITE));
+/// assert_eq!(Permissions::from_bits(0b111), Some(READ | WRITE | EXEC));
+/// assert_eq!(Permissions::from_bits(0b1111), None);
 /// ```
 pub trait BitFlagsSet<T> {
     /// The bit pattern that represents an empty flag set.
@@ -93,12 +105,14 @@ pub trait BitFlagsAny {}
 ///
 /// type Permissions = BitFlags<u32, PermissionsTag>;
 ///
-/// const READ: Permissions = Permissions::from_bits_truncate(1 << 0);
-/// const WRITE: Permissions = Permissions::from_bits_truncate(1 << 1);
+/// const READ: Permissions = Permissions::from_bits(1 << 0).unwrap();
+/// const WRITE: Permissions = Permissions::from_bits(1 << 1).unwrap();
+/// const EXEC: Permissions = Permissions::from_bits(1 << 2).unwrap();
 ///
 /// let rw = READ | WRITE;
 /// assert!(rw.contains(READ));
 /// assert!(rw.contains(WRITE));
+/// assert!(!rw.contains(EXEC));
 /// ```
 #[repr(transparent)]
 pub struct BitFlags<T, U>(T, PhantomData<fn() -> *const U>)
@@ -107,8 +121,9 @@ where
 
 /// An iterator over the individual bits set in a [`BitFlags`] value.
 ///
-/// Each item is a `BitFlags` value containing exactly one set bit. The iterator
-/// yields bits from the least significant bit to the most significant bit.
+/// Each item is a `BitFlags` value containing exactly one set bit.
+/// The iterator yields bits from the least significant bit to the most
+/// significant bit.
 ///
 /// This type is created by the [`IntoIterator`] implementation for
 /// [`BitFlags`].
@@ -130,8 +145,15 @@ macro_rules! impl_bit_flags {
         {
             /// Creates a flag set with no bits set (zero bits).
             #[inline]
-            pub const fn new() -> Self {
+            pub const fn empty() -> Self {
                 Self(0, PhantomData)
+            }
+
+            /// Creates a flag set with all bits set.
+            #[inline]
+            #[must_use]
+            pub const fn all() -> Self {
+                Self(U::ALL_BITS, PhantomData)
             }
 
             /// Creates a flag set from raw bits if all set bits are valid.
