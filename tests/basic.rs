@@ -104,16 +104,18 @@ fn test_from_retain() {
 
 #[test]
 fn test_truncate() {
-    let flags = Perms::from_bits_retain(0b1111_1111);
+    let mut flags = Perms::from_bits_retain(0b1111_1111);
     assert_eq!(
         flags,
         Perms::from_bits_retain(0b1111_1000) | READ | WRITE | EXEC
     );
-    assert_eq!(flags.truncate(), READ | WRITE | EXEC);
+    flags.truncate();
+    assert_eq!(flags, READ | WRITE | EXEC);
 
-    let flags = Perms::from_bits_retain(0b1111_1101);
+    let mut flags = Perms::from_bits_retain(0b1111_1101);
     assert_eq!(flags, Perms::from_bits_retain(0b1111_1000) | READ | EXEC);
-    assert_eq!(flags.truncate(), READ | EXEC);
+    flags.truncate();
+    assert_eq!(flags, READ | EXEC);
 }
 
 #[test]

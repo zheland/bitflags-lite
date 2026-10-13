@@ -367,14 +367,13 @@ macro_rules! impl_bit_flags {
 
             /// Clears all bits not present in [`BitFlagsSpec::VALID_BITS`].
             ///
-            /// Returns `self` unchanged if it already contains only valid bits.
+            /// Keep `self` unchanged if it already contains only valid bits.
             #[inline]
-            #[must_use]
-            pub const fn truncate(self) -> Self
+            pub const fn truncate(&mut self)
             where
                 U: BitFlagsSpec<$ty>,
             {
-                Self(self.0 & U::VALID_BITS, PhantomData)
+                self.0 &= U::VALID_BITS
             }
 
             /// Returns the raw bits stored in this flag set.
@@ -583,6 +582,13 @@ impl_bit_flags!(u32);
 impl_bit_flags!(u64);
 impl_bit_flags!(u128);
 impl_bit_flags!(usize);
+
+impl_bit_flags!(i8);
+impl_bit_flags!(i16);
+impl_bit_flags!(i32);
+impl_bit_flags!(i64);
+impl_bit_flags!(i128);
+impl_bit_flags!(isize);
 
 impl<T, U> BitFlags<T, U>
 where
