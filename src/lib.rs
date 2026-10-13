@@ -21,6 +21,7 @@ use core::borrow::{Borrow, BorrowMut};
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::hint::unreachable_unchecked;
 use core::iter::{FromIterator, FusedIterator, IntoIterator};
 use core::marker::PhantomData;
 use core::ops::{
@@ -54,8 +55,8 @@ mod private {
 /// struct PermissionsTag;
 ///
 /// impl BitFlagsSpec<u32> for PermissionsTag {
-///     const EMPTY_BITS: u32 = 0;
-///     const ALL_VALID_BITS: u32 = (1 << 3) - 1;
+///     const VALID_BITS: u32 = (1 << 3) - 1;
+///     type AnyBitsAllowed = bitflags_lite::False;
 /// }
 ///
 /// type Permissions = BitFlags<u32, PermissionsTag>;
@@ -70,17 +71,14 @@ mod private {
 /// assert_eq!(Permissions::from_bits(0b1111), None);
 /// ```
 pub trait BitFlagsSpec<T> {
-    /// The bit pattern that represents an empty flag set.
-    const EMPTY_BITS: T;
-
     /// The bit pattern that contains all valid bits for this flag set.
-    const ALL_VALID_BITS: T;
+    const VALID_BITS: T;
 
     /// Controls whether arbitrary bit patterns may be stored in [`BitFlags`].
     ///
     /// Set this associated type to [`True`] to make
     /// [`BitFlags::from_bits_retain`] available without checking against
-    /// [`BitFlagsSpec::ALL_VALID_BITS`]; set it to [`False`] otherwise.
+    /// [`BitFlagsSpec::VALID_BITS`]; set it to [`False`] otherwise.
     type AnyBitsAllowed: Bool;
 }
 
@@ -101,8 +99,8 @@ pub trait BitFlagsSpec<T> {
 /// struct PermissionsTag;
 ///
 /// impl BitFlagsSpec<u32> for PermissionsTag {
-///     const EMPTY_BITS: u32 = 0;
-///     const ALL_VALID_BITS: u32 = (1 << 3) - 1;
+///     const VALID_BITS: u32 = (1 << 3) - 1;
+///     type AnyBitsAllowed = bitflags_lite::False;
 /// }
 ///
 /// type Permissions = BitFlags<u32, PermissionsTag>;
@@ -170,22 +168,7 @@ where
 
 macro_rules! impl_bit_flags {
     ($ty:ty) => {
-        impl<U> BitFlags<$ty, U>
-        where
-            U: ?Sized + BitFlagsSpec<$ty, AnyBitsAllowed = False>,
-        {
-            /// Creates a flag set containing all valid and all possible bits
-            /// for this tag.
-            ///
-            /// Available only when `U` prohibit arbitrary bits, i.e. when its
-            /// [`AnyBitsAllowed`](BitFlagsSpec::AnyBitsAllowed) associated type
-            /// is [`False`].
-            #[inline]
-            #[must_use]
-            pub const fn all() -> Self {
-                Self(U::ALL_VALID_BITS, PhantomData)
-            }
-        }
+        impl private::Sealed for $ty {}
 
         impl<U> BitFlags<$ty, U>
         where
@@ -216,16 +199,16 @@ macro_rules! impl_bit_flags {
             #[inline]
             #[must_use]
             pub const fn all_valid() -> Self {
-                Self(U::ALL_VALID_BITS, PhantomData)
+                Self(U::VALID_BITS, PhantomData)
             }
 
             /// Creates a flag set from raw bits if all set bits are valid.
             ///
             /// Returns `None` if `bits` contains any bit not present in
-            /// [`BitFlagsSpec::ALL_VALID_BITS`].
+            /// [`BitFlagsSpec::VALID_BITS`].
             #[inline]
             pub const fn from_bits(bits: $ty) -> Option<Self> {
-                if bits & !U::ALL_VALID_BITS == 0 {
+                if bits & !U::VALID_BITS == 0 {
                     Some(Self(bits, PhantomData))
                 } else {
                     None
@@ -233,23 +216,52 @@ macro_rules! impl_bit_flags {
             }
 
             /// Creates a flag set from raw bits, clearing any bits not present in
-            /// [`BitFlagsSpec::ALL_VALID_BITS`].
+            /// [`BitFlagsSpec::VALID_BITS`].
             #[inline]
             pub const fn from_bits_truncate(bits: $ty) -> Self {
-                Self(bits & U::ALL_VALID_BITS, PhantomData)
+                Self(bits & U::VALID_BITS, PhantomData)
             }
 
-            /// Clears all bits not present in [`BitFlagsSpec::ALL_VALID_BITS`].
+            /// Creates a flag set from raw bits, without checking if the bits
+            /// are valid.
+            ///
+            /// # Safety
+            ///
+            /// If `AnyBitsAllowed` if `False`, than the bits passes must be
+            /// only subset of [`BitFlagsSpec::VALID_BITS`].
+            #[inline]
+            pub const unsafe fn from_bits_unchecked(bits: $ty) -> Self {
+                Self(bits, PhantomData)
+            }
+
+            /// Clears all bits not present in [`BitFlagsSpec::VALID_BITS`].
             #[inline]
             #[must_use]
             pub const fn truncate(self) -> Self {
-                Self(self.0 & U::ALL_VALID_BITS, PhantomData)
+                if U::AnyBitsAllowed::VALUE {
+                    Self(self.0 & U::VALID_BITS, PhantomData)
+                } else {
+                    self
+                }
             }
 
             /// Returns the raw bits stored in this flag set.
             #[inline]
             pub const fn bits(self) -> $ty {
+                self.hint_possible_invariants();
                 self.0
+            }
+
+            /// Returns the mutable reference to raw bits stored in this flag
+            /// set.
+            ///
+            /// # Safety
+            ///
+            /// If `AnyBitsAllowed` if `False`, than the bits must always remain
+            /// a subset of [`BitFlagsSpec::VALID_BITS`].
+            #[inline]
+            pub const unsafe fn bits_mut(&mut self) -> &mut $ty {
+                &mut self.0
             }
 
             /// Returns `true` if no bits are set.
@@ -316,7 +328,8 @@ macro_rules! impl_bit_flags {
 
             /// Returns the difference of `self` and `other`.
             ///
-            /// The result contains bits that are set in `self` but not in `other`.
+            /// The result contains bits that are set in `self` but not in
+            /// `other`.
             #[inline]
             #[must_use]
             pub const fn difference(self, other: Self) -> Self {
@@ -325,8 +338,8 @@ macro_rules! impl_bit_flags {
 
             /// Returns the symmetric difference of `self` and `other`.
             ///
-            /// The result contains bits that are set in exactly one of `self` or
-            /// `other`.
+            /// The result contains bits that are set in exactly one of `self`
+            /// or `other`.
             #[inline]
             #[must_use]
             pub const fn symmetric_difference(self, other: Self) -> Self {
@@ -335,18 +348,37 @@ macro_rules! impl_bit_flags {
 
             /// Returns the complement of `self`.
             ///
-            /// All bits not set in `self` become set. Note that this may include
-            /// bits outside [`BitFlagsSpec::ALL_VALID_BITS`].
+            /// All bits not set in `self` become set.
             #[inline]
             #[must_use]
             pub const fn complement(self) -> Self {
-                Self(!self.0, PhantomData)
+                Self(!self.0 & U::VALID_BITS, PhantomData)
+            }
+
+            // Informs the compiler that some values are impossible,
+            // possibly enabling further optimizations.
+            #[inline]
+            const fn hint_possible_invariants(&self) {
+                if !U::AnyBitsAllowed::VALUE && (self.0 & !U::VALID_BITS != 0) {
+                    // SAFETY: `BitFlags` must not contain invalid invariants.
+                    unsafe { unreachable_unchecked() };
+                }
+            }
+        }
+
+        impl<U> Default for BitFlags<$ty, U>
+        where
+            U: ?Sized + BitFlagsSpec<$ty>,
+        {
+            #[inline]
+            fn default() -> Self {
+                Self(0, PhantomData)
             }
         }
 
         impl<U> From<$ty> for BitFlags<$ty, U>
         where
-            U: ?Sized + BitFlagsSpec<$ty>,
+            U: ?Sized + BitFlagsSpec<$ty, AnyBitsAllowed = True>,
         {
             #[inline]
             fn from(other: $ty) -> Self {
@@ -360,6 +392,7 @@ macro_rules! impl_bit_flags {
         {
             #[inline]
             fn from(flags: BitFlags<$ty, U>) -> Self {
+                flags.hint_possible_invariants();
                 flags.0
             }
         }
@@ -389,6 +422,7 @@ macro_rules! impl_bit_flags {
             )]
             #[inline]
             fn next(&mut self) -> Option<Self::Item> {
+                self.0.hint_possible_invariants();
                 let lowest = self.0.0.isolate_lowest_one();
                 if lowest == 0 {
                     None
@@ -401,6 +435,7 @@ macro_rules! impl_bit_flags {
             #[expect(clippy::as_conversions, reason = "T::count_ones never exceeds `usize`")]
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
+                self.0.hint_possible_invariants();
                 let len = self.0.0.count_ones() as usize;
                 (len, Some(len))
             }
@@ -416,6 +451,7 @@ macro_rules! impl_bit_flags {
             )]
             #[inline]
             fn next_back(&mut self) -> Option<Self::Item> {
+                self.0.hint_possible_invariants();
                 let highest = self.0.0.isolate_highest_one();
                 if highest == 0 {
                     None
@@ -433,6 +469,7 @@ macro_rules! impl_bit_flags {
             #[expect(clippy::as_conversions, reason = "T::count_ones never exceeds `usize`")]
             #[inline]
             fn len(&self) -> usize {
+                self.0.hint_possible_invariants();
                 self.0.0.count_ones() as usize
             }
         }
@@ -484,7 +521,7 @@ macro_rules! impl_bit_flags {
             {
                 let value = value.strip_prefix("0b").unwrap_or(value);
                 let bits = <$ty>::from_str_radix(value, 2).map_err(E::custom)?;
-                if U::AnyBitsAllowed::VALUE || bits & !U::ALL_VALID_BITS == 0 {
+                if U::AnyBitsAllowed::VALUE || bits & !U::VALID_BITS == 0 {
                     Ok(BitFlags(bits, PhantomData))
                 } else {
                     Err(E::custom("invalid bit pattern"))
@@ -503,7 +540,7 @@ impl_bit_flags!(usize);
 
 impl<T, U> BitOr for BitFlags<T, U>
 where
-    T: BitOr<T, Output = T>,
+    T: BitOr<T, Output = T> + private::Sealed,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Output = Self;
@@ -516,7 +553,7 @@ where
 
 impl<T, U> BitOrAssign for BitFlags<T, U>
 where
-    T: BitOrAssign,
+    T: BitOrAssign + private::Sealed,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
@@ -527,7 +564,7 @@ where
 
 impl<T, U> BitAnd for BitFlags<T, U>
 where
-    T: BitAnd<T, Output = T>,
+    T: BitAnd<T, Output = T> + private::Sealed,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Output = Self;
@@ -540,7 +577,7 @@ where
 
 impl<T, U> BitAndAssign for BitFlags<T, U>
 where
-    T: BitAndAssign,
+    T: BitAndAssign + private::Sealed,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
@@ -551,7 +588,7 @@ where
 
 impl<T, U> BitXor for BitFlags<T, U>
 where
-    T: BitXor<T, Output = T>,
+    T: BitXor<T, Output = T> + private::Sealed,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Output = Self;
@@ -564,7 +601,7 @@ where
 
 impl<T, U> BitXorAssign for BitFlags<T, U>
 where
-    T: BitXorAssign,
+    T: BitXorAssign + private::Sealed,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
@@ -575,7 +612,7 @@ where
 
 impl<T, U> Sub for BitFlags<T, U>
 where
-    T: Not<Output = T> + BitAnd<T, Output = T>,
+    T: Not<Output = T> + BitAnd<T, Output = T> + private::Sealed,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Output = Self;
@@ -588,7 +625,7 @@ where
 
 impl<T, U> SubAssign for BitFlags<T, U>
 where
-    T: Not<Output = T> + BitAndAssign,
+    T: Not<Output = T> + BitAndAssign + private::Sealed,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
@@ -599,14 +636,14 @@ where
 
 impl<T, U> Not for BitFlags<T, U>
 where
-    T: Not<Output = T>,
+    T: Not<Output = T> + BitAnd<T, Output = T> + private::Sealed,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Output = Self;
 
     #[inline]
     fn not(self) -> Self {
-        Self(!self.0, PhantomData)
+        Self(!self.0 & U::VALID_BITS, PhantomData)
     }
 }
 
@@ -676,17 +713,6 @@ where
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state);
-    }
-}
-
-impl<T, U> Default for BitFlags<T, U>
-where
-    T: Default,
-    U: ?Sized + BitFlagsSpec<T>,
-{
-    #[inline]
-    fn default() -> Self {
-        Self(U::EMPTY_BITS, PhantomData)
     }
 }
 
@@ -775,7 +801,7 @@ where
 
 impl<T, U> AsMut<T> for BitFlags<T, U>
 where
-    U: ?Sized + BitFlagsSpec<T>,
+    U: ?Sized + BitFlagsSpec<T, AnyBitsAllowed = True>,
 {
     #[inline]
     fn as_mut(&mut self) -> &mut T {
@@ -795,7 +821,7 @@ where
 
 impl<T, U> BorrowMut<T> for BitFlags<T, U>
 where
-    U: ?Sized + BitFlagsSpec<T>,
+    U: ?Sized + BitFlagsSpec<T, AnyBitsAllowed = True>,
 {
     #[inline]
     fn borrow_mut(&mut self) -> &mut T {
@@ -829,7 +855,7 @@ where
     where
         I: IntoIterator<Item = Self>,
     {
-        let mut this = Self(U::EMPTY_BITS, PhantomData);
+        let mut this = Self(T::default(), PhantomData);
         for other in iter {
             this.0 |= other.0;
         }
@@ -850,7 +876,7 @@ where
 
 impl<T, U> Default for BitFlagsIter<T, U>
 where
-    T: Default,
+    BitFlags<T, U>: Default,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
