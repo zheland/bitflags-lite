@@ -2,40 +2,24 @@
 
 #![allow(unused_crate_dependencies, reason = "okay in tests")]
 
-use bitflags_lite::{BitFlags, BitFlagsSpec};
+use bitflags_lite::{BitFlags, BitFlagsIter, BitFlagsSpec};
 
 /// A tag for permissions bit flags allowing only valid bit combinations.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
 pub struct PermsTag;
 
 /// Permissions bit flags allowing only valid bit combinations.
-pub type Perms = BitFlags<u32, PermsTag>;
+pub type Perms = BitFlags<u8, PermsTag>;
 
 const NONE: Perms = Perms::empty();
 const READ: Perms = Perms::from_bits(1 << 0).unwrap();
 const WRITE: Perms = Perms::from_bits(1 << 1).unwrap();
 const EXEC: Perms = Perms::from_bits(1 << 2).unwrap();
 
-impl BitFlagsSpec<u32> for PermsTag {
-    const VALID_BITS: u32 = (1 << 3) - 1;
-    type AnyBitsAllowed = bitflags_lite::False;
-}
-
-/// A tag for permissions bit flags allowing any bit combinations.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
-pub struct PermsAnyTag;
-
-/// Permissions bit flags allowing any bit combinations.
-pub type PermsAny = BitFlags<u32, PermsAnyTag>;
-
-const NONE_ANY: PermsAny = PermsAny::empty();
-const READ_ANY: PermsAny = PermsAny::from_bits(1 << 0).unwrap();
-const WRITE_ANY: PermsAny = PermsAny::from_bits(1 << 1).unwrap();
-const EXEC_ANY: PermsAny = PermsAny::from_bits(1 << 2).unwrap();
-
-impl BitFlagsSpec<u32> for PermsAnyTag {
-    const VALID_BITS: u32 = (1 << 3) - 1;
-    type AnyBitsAllowed = bitflags_lite::True;
+impl BitFlagsSpec<u8> for PermsTag {
+    const VALID_BITS: u8 = (1 << 3) - 1;
+    const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+    const ASCII_CASE_INSENSITIVE_PARSING: bool = false;
 }
 
 #[test]
@@ -47,21 +31,8 @@ fn test_empty() {
 }
 
 #[test]
-fn test_all() {
-    let flags = Perms::all();
-    assert!(!flags.is_empty());
-    assert_eq!(flags.bits(), 0b111);
-    assert_eq!(flags.into_iter().len(), 3);
-}
-
-#[test]
 fn test_all_valid() {
     let flags = Perms::all_valid();
-    assert!(!flags.is_empty());
-    assert_eq!(flags.bits(), 0b111);
-    assert_eq!(flags.into_iter().len(), 3);
-
-    let flags = PermsAny::all_valid();
     assert!(!flags.is_empty());
     assert_eq!(flags.bits(), 0b111);
     assert_eq!(flags.into_iter().len(), 3);
@@ -97,46 +68,34 @@ fn test_from_truncate() {
 
 #[test]
 fn test_from_retain() {
-    assert_eq!(PermsAny::from_bits(1 << 3), None);
-    let bit4 = PermsAny::from_bits_retain(1 << 3);
+    assert_eq!(Perms::from_bits(1 << 3), None);
+    let bit4 = Perms::from_bits_retain(1 << 3);
     assert_eq!(bit4.bits(), 0b1000);
 
-    assert_eq!(PermsAny::from_bits_retain(0b1), READ_ANY);
-    assert_eq!(PermsAny::from_bits_retain(0b10), WRITE_ANY);
-    assert_eq!(PermsAny::from_bits_retain(0b11), READ_ANY | WRITE_ANY);
-    assert_eq!(PermsAny::from_bits_retain(0b100), EXEC_ANY);
-    assert_eq!(PermsAny::from_bits_retain(0b110), WRITE_ANY | EXEC_ANY);
-    assert_eq!(
-        PermsAny::from_bits_retain(0b111),
-        READ_ANY | WRITE_ANY | EXEC_ANY
-    );
-    assert_eq!(PermsAny::from_bits_retain(0b1000), NONE_ANY | bit4);
-    assert_eq!(PermsAny::from_bits_retain(0b1100), EXEC_ANY | bit4);
-    assert_eq!(
-        PermsAny::from_bits_retain(0b1110),
-        WRITE_ANY | EXEC_ANY | bit4
-    );
-    assert_eq!(
-        PermsAny::from_bits_retain(0b1111),
-        READ_ANY | WRITE_ANY | EXEC_ANY | bit4
-    );
+    assert_eq!(Perms::from_bits_retain(0b1), READ);
+    assert_eq!(Perms::from_bits_retain(0b10), WRITE);
+    assert_eq!(Perms::from_bits_retain(0b11), READ | WRITE);
+    assert_eq!(Perms::from_bits_retain(0b100), EXEC);
+    assert_eq!(Perms::from_bits_retain(0b110), WRITE | EXEC);
+    assert_eq!(Perms::from_bits_retain(0b111), READ | WRITE | EXEC);
+    assert_eq!(Perms::from_bits_retain(0b1000), NONE | bit4);
+    assert_eq!(Perms::from_bits_retain(0b1100), EXEC | bit4);
+    assert_eq!(Perms::from_bits_retain(0b1110), WRITE | EXEC | bit4);
+    assert_eq!(Perms::from_bits_retain(0b1111), READ | WRITE | EXEC | bit4);
 }
 
 #[test]
 fn test_truncate() {
-    let flags = PermsAny::from_bits_retain(0b1111_1111);
+    let flags = Perms::from_bits_retain(0b1111_1111);
     assert_eq!(
         flags,
-        PermsAny::from_bits_retain(0b1111_1000) | READ_ANY | WRITE_ANY | EXEC_ANY
+        Perms::from_bits_retain(0b1111_1000) | READ | WRITE | EXEC
     );
-    assert_eq!(flags.truncate(), READ_ANY | WRITE_ANY | EXEC_ANY);
+    assert_eq!(flags.truncate(), READ | WRITE | EXEC);
 
-    let flags = PermsAny::from_bits_retain(0b1111_1101);
-    assert_eq!(
-        flags,
-        PermsAny::from_bits_retain(0b1111_1000) | READ_ANY | EXEC_ANY
-    );
-    assert_eq!(flags.truncate(), READ_ANY | EXEC_ANY);
+    let flags = Perms::from_bits_retain(0b1111_1101);
+    assert_eq!(flags, Perms::from_bits_retain(0b1111_1000) | READ | EXEC);
+    assert_eq!(flags.truncate(), READ | EXEC);
 }
 
 #[test]
@@ -247,6 +206,18 @@ fn test_complement() {
 }
 
 #[test]
+fn test_from() {
+    let rwx = READ | WRITE | EXEC;
+    assert_eq!(u8::from(rwx), 0b111);
+
+    let rx = READ | EXEC;
+    assert_eq!(u8::from(rx), 0b101);
+
+    let flags = Perms::from_bits_retain(0b1111_1111);
+    assert_eq!(u8::from(flags), 0b1111_1111);
+}
+
+#[test]
 fn test_iterator() {
     let rwx = READ | WRITE | EXEC;
     assert_eq!(rwx.into_iter().len(), 3);
@@ -268,4 +239,264 @@ fn test_iterator() {
     assert_eq!(none.into_iter().size_hint(), (0, Some(0)));
     assert_eq!(none.into_iter().collect::<Vec<_>>(), vec![]);
     assert_eq!(none.into_iter().rev().collect::<Vec<_>>(), vec![]);
+}
+
+#[test]
+fn test_clone() {
+    let rwx = READ | WRITE | EXEC;
+    #[expect(clippy::clone_on_copy, reason = "explicit clone test")]
+    let rwx = rwx.clone();
+    assert_eq!(rwx.bits(), 0b111);
+
+    let mut iter1 = rwx.into_iter();
+    assert_eq!(iter1.next(), Some(READ));
+    let iter2 = iter1.clone();
+
+    assert_eq!(iter1.collect::<Vec<_>>(), [WRITE, EXEC]);
+    assert_eq!(iter2.collect::<Vec<_>>(), [WRITE, EXEC]);
+}
+
+#[test]
+fn test_cmp() {
+    assert_eq!((READ | WRITE) - WRITE, READ);
+    assert!(READ < WRITE);
+    assert!(WRITE < EXEC);
+
+    let mut set = [
+        Perms::from_bits_retain(0b1000),
+        Perms::from_bits_retain(0b1010),
+        READ,
+        WRITE,
+        EXEC,
+        READ | WRITE,
+        WRITE | EXEC,
+        EXEC | READ,
+        READ,
+        WRITE,
+        EXEC,
+        READ | WRITE | EXEC,
+        NONE,
+    ];
+    set.sort_unstable();
+    assert_eq!(
+        set,
+        [
+            NONE,
+            READ,
+            READ,
+            WRITE,
+            WRITE,
+            READ | WRITE,
+            EXEC,
+            EXEC,
+            READ | EXEC,
+            WRITE | EXEC,
+            READ | WRITE | EXEC,
+            Perms::from_bits_retain(0b1000),
+            Perms::from_bits_retain(0b1010),
+        ]
+    );
+}
+
+#[test]
+fn test_hash() {
+    use core::hash::{Hash, Hasher};
+    use std::collections::HashSet;
+    use std::hash::DefaultHasher;
+
+    fn hash<T: Hash>(value: &T) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        value.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    assert_eq!(hash(&READ), hash(&READ));
+    assert_ne!(hash(&READ), hash(&WRITE));
+    assert_ne!(hash(&READ), hash(&Perms::from_bits_retain(0b1000)));
+
+    let input = [
+        READ,
+        WRITE | EXEC,
+        READ,
+        READ | WRITE | EXEC,
+        Perms::from_bits_retain(0b1000),
+        Perms::from_bits_retain(0b1010),
+        READ | WRITE | EXEC,
+    ];
+
+    let set: HashSet<_> = input.into_iter().collect();
+
+    assert_eq!(set.len(), 5);
+    assert!(set.contains(&READ));
+    assert!(set.contains(&(WRITE | EXEC)));
+    assert!(set.contains(&(READ | WRITE | EXEC)));
+    assert!(set.contains(&Perms::from_bits_retain(0b1000)));
+    assert!(set.contains(&Perms::from_bits_retain(0b1010)));
+    assert!(!set.contains(&NONE));
+    assert!(!set.contains(&WRITE));
+    assert!(!set.contains(&(READ | WRITE)));
+    assert!(!set.contains(&(READ | EXEC)));
+}
+
+#[test]
+fn test_default() {
+    let flags = Perms::default();
+    assert!(flags.is_empty());
+    assert_eq!(flags.bits(), 0);
+
+    let mut iter = BitFlagsIter::<u8, PermsTag>::default();
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_as_ref() {
+    use core::borrow::Borrow;
+
+    let rwx = READ | WRITE | EXEC;
+    assert_eq!(rwx.as_ref(), &0b111);
+    assert_eq!(Borrow::<u8>::borrow(&rwx), &0b111);
+}
+
+#[test]
+fn test_ops() {
+    assert_eq!(!NONE, READ | WRITE | EXEC);
+    assert_eq!(!!NONE, NONE);
+    assert_eq!(!READ, WRITE | EXEC);
+    assert_eq!(!READ & !WRITE, EXEC);
+    assert_eq!(READ ^ WRITE, READ | WRITE);
+    assert_eq!((READ | WRITE) & (WRITE | EXEC), WRITE);
+    assert_eq!((READ | WRITE) ^ (WRITE | EXEC), READ | EXEC);
+    assert_eq!((READ | WRITE) - (WRITE | EXEC), READ);
+}
+
+#[test]
+fn test_assign_ops() {
+    let mut rwx = READ | WRITE | EXEC;
+    rwx |= READ;
+    assert_eq!(rwx, READ | WRITE | EXEC);
+    rwx &= !WRITE;
+    assert_eq!(rwx, READ | EXEC);
+    rwx ^= WRITE;
+    assert_eq!(rwx, READ | WRITE | EXEC);
+    rwx ^= READ;
+    assert_eq!(rwx, WRITE | EXEC);
+    rwx &= READ | EXEC;
+    assert_eq!(rwx, EXEC);
+    rwx |= WRITE;
+    assert_eq!(rwx, WRITE | EXEC);
+    rwx -= READ | WRITE;
+    assert_eq!(rwx, EXEC);
+}
+
+#[test]
+fn test_fmt() {
+    let rwx = READ | WRITE | EXEC | Perms::from_bits_retain(0b1000);
+    assert_eq!(format!("{rwx}"), "1111");
+    assert_eq!(format!("{rwx:#}"), "0b1111");
+
+    assert_eq!(format!("{rwx:b}"), "1111");
+    assert_eq!(format!("{rwx:#b}"), "0b1111");
+    assert_eq!(format!("{rwx:o}"), "17");
+    assert_eq!(format!("{rwx:#o}"), "0o17");
+    assert_eq!(format!("{rwx:x}"), "f");
+    assert_eq!(format!("{rwx:#x}"), "0xf");
+    assert_eq!(format!("{rwx:X}"), "F");
+    assert_eq!(format!("{rwx:#X}"), "0xF");
+
+    assert_eq!(
+        format!("{rwx:?}"),
+        "BitFlags(0b1111, PhantomData<basic::PermsTag>)"
+    );
+    assert_eq!(
+        format!("{rwx:#?}"),
+        "BitFlags(0b1111, PhantomData<basic::PermsTag>)"
+    );
+    assert_eq!(
+        format!("{:?}", rwx.into_iter()),
+        "BitFlagsIter(BitFlags(0b1111, PhantomData<basic::PermsTag>))"
+    );
+}
+
+#[test]
+fn test_collect() {
+    assert_eq!(
+        [READ, READ, EXEC].into_iter().collect::<Perms>(),
+        READ | EXEC
+    );
+
+    assert_eq!(
+        [READ, NONE, WRITE, NONE, Perms::from_bits_retain(0b1000)]
+            .into_iter()
+            .collect::<Perms>(),
+        READ | WRITE | Perms::from_bits_retain(0b1000)
+    );
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_serde() {
+    use serde_test::{Token, assert_de_tokens, assert_de_tokens_error, assert_tokens};
+
+    assert_tokens(&(READ | EXEC), &[Token::Str("101")]);
+    assert_tokens(
+        &(READ | WRITE | Perms::from_bits_truncate(0b1000)),
+        &[Token::Str("1011")],
+    );
+    assert_tokens(&NONE, &[Token::Str("0")]);
+
+    assert_de_tokens(&(READ | EXEC), &[Token::Str("0b01")]);
+    assert_de_tokens(&(READ | EXEC), &[Token::Str("0B01")]);
+    assert_de_tokens_error::<Perms>(&[Token::Str("0b0B01")], "");
+}
+
+#[cfg(feature = "bytemuck")]
+#[test]
+fn test_bytemuck() {
+    use bytemuck::{Pod, Zeroable};
+
+    fn assert_pod<T: Pod>() {}
+    fn assert_zeroable<T: Zeroable>() {}
+
+    assert_pod::<Perms>();
+    assert_zeroable::<Perms>();
+
+    let f: Perms = Zeroable::zeroed();
+    assert!(f.is_empty());
+    assert_eq!(f, NONE);
+
+    let bits = 0b0101u8;
+    let f: Perms = bytemuck::cast(bits);
+    assert_eq!(f.bits(), bits);
+
+    let raw: u8 = bytemuck::cast(f);
+    assert_eq!(raw, bits);
+
+    let flags = [
+        READ,
+        WRITE,
+        READ | EXEC,
+        WRITE | Perms::from_bits_truncate(0b1000),
+    ];
+    let bytes: &[u8] = bytemuck::cast_slice(&flags);
+    assert_eq!(bytes, &[0b001, 0b010, 0b101, 0b1010]);
+}
+
+#[cfg(feature = "arbitrary")]
+#[test]
+fn test_arbitrary() {
+    use arbitrary::{Arbitrary, Unstructured};
+
+    let data = &[0b001, 0b010, 0b101, 0b1010];
+    let mut u = Unstructured::new(data);
+    let perms = <[Perms; 4]>::arbitrary(&mut u).expect("should not fail");
+    assert_eq!(
+        perms,
+        [
+            READ,
+            WRITE,
+            READ | EXEC,
+            WRITE | Perms::from_bits_truncate(0b1000),
+        ]
+    );
 }

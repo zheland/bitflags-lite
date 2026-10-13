@@ -28,7 +28,8 @@ It is designed to be simple, predictable, and const-friendly.
 ## Features
 
 - Macro-free: No declarative or procedural macros are required.
-- Generic: Use any unsigned integer as storage and any type as a tag.
+- Generic: Use any of the standard unsigned integer types as storage and any
+  type as a tag.
 - `no_std` / `no_alloc`: Works in embedded and other constrained environments.
 - `const fn` API: Most operations are `const fn`.
 - Optional `serde`: Serialize and deserialize flags as binary strings.
@@ -50,7 +51,7 @@ bitflags-lite = { version = "0.1.0-dev.0", features = [ "serde", "bytemuck" ] }
 ```
 
 
-## Usage
+## Example
 
 Define a tag type and implement `BitFlagsSpec` for it:
 
@@ -62,7 +63,6 @@ struct PermissionsTag;
 
 impl BitFlagsSpec<u32> for PermissionsTag {
     const VALID_BITS: u32 = (1 << 3) - 1;
-    type AnyBitsAllowed = bitflags_lite::False;
 }
 
 type Permissions = BitFlags<u32, PermissionsTag>;
@@ -89,9 +89,22 @@ you prefer.
 
 ## Comparison with Existing Crates
 
-TODO: Compare with existing crates.
-- Mention that for `bitflag` of 3 flags `bitflags` crate generate over 800 lines of code.
-- Mention that comparing to `bitflags` this crate can not work with string flag values at all.
+ TODO: Compare with existing crates.
+- Mention that for a `bitflags` set of 3 flags, the `bitflags` crate generates over 800 lines of code.
+- Mention that, unlike `bitflags`, this crate cannot work with string flag values at all.
+
+### Differences from `bitflags`
+
+- Macro-free: no `bitflags!` invocation or generated module is required.
+- Generic: the storage type `T` and tag type `U` are both type parameters.
+- No string flag names: parsing, formatting, and iteration by name are not
+  provided.
+- `all_valid()` is used instead of `all()`: [`BitFlags::from_bits_retain`]
+  can create values with invalid bits, so "all" is ambiguous.
+  `all_valid()` always means exactly [`BitFlagsSpec::VALID_BITS`].
+- Most operations are `const fn`, and the crate is `no_std` / `no_alloc`.
+
+
 
 ## Documentation
 
@@ -100,11 +113,12 @@ TODO: Compare with existing crates.
 
 ## Feature flags
 
+- `arbitrary`: implements `Arbitrary` for `BitFlags<T, U>`.
 - `serde`: implements `serde::Serialize` and `serde::Deserialize` for
   `BitFlags<T, U>` with serialization as a binary string such as `"0b101"` and
    deserialization from a binary string, optionally prefixed with `0b`.
-- `bytemuck`: implements `Zeroable` and `Pod` when `T` does, allowing it to be
-used in plain-old-data contexts.
+- `bytemuck`: implements `Zeroable` and `Pod` for `BitFlags<T, U>`, allowing it
+  to be used in plain-old-data contexts.
 
 
 ## License

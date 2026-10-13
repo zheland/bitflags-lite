@@ -13,15 +13,20 @@ keywords = [ "bit", "bitmask", "bitflags", "flags" ]
 categories = [ "no-std", "no-std::no-alloc" ]
 
 [features]
+alloc = []
+std = [ "alloc" ]
+arbitrary = [ "dep:arbitrary" ]
 bytemuck = [ "dep:bytemuck" ]
 serde = [ "dep:serde" ]
 
 [dependencies]
+arbitrary = { package = "arbitrary", version = "1.5.0", optional = true, default-features = false }
 bytemuck = { package = "bytemuck", version = "1.25.2", optional = true, default-features = false }
 serde = { package = "serde", version = "1.0.229", optional = true, default-features = false }
 
 [dev-dependencies]
 version-sync = "0.9.5"
+serde_test = "1.0.158"
 
 [package.metadata.docs.rs]
 all-features = true
