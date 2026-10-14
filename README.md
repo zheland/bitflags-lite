@@ -79,6 +79,7 @@ bitflags-lite = { version = "0.1.0-dev.0", features = [ "serde", "bytemuck" ] }
 Define a tag type and implement [`BitFlagsSpec`] for it:
 
 ```rust
+use core::str::FromStr;
 use bitflags_lite::{BitFlags, BitFlagsSpec, NameMatcher};
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
@@ -90,22 +91,42 @@ impl BitFlagsSpec<u32> for PermissionsTag {
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 }
 
+type Permission = BitFlag<u32, PermissionsTag>;
 type Permissions = BitFlags<u32, PermissionsTag>;
 
 // Constructors are `const` for concrete integer types.
-const READ: Permissions = Permissions::try_from_bit(0).unwrap();
-const WRITE: Permissions = Permissions::try_from_bit(1).unwrap();
-const EXEC: Permissions = Permissions::try_from_bit(2).unwrap();
+const READ: Permission = Permission::try_from_bit(0).unwrap();
+const WRITE: Permission = Permission::try_from_bit(1).unwrap();
+const EXEC: Permission = Permission::try_from_bit(2).unwrap();
 
-fn main() {
-    let rwx = READ | WRITE | EXEC;
-    assert!(rwx.contains(READ));
-    assert!(rwx.contains(WRITE));
-    assert!(rwx.contains(EXEC));
+let rwx = READ | WRITE | EXEC;
+assert!(rwx.contains(READ.into()));
+assert!(rwx.contains(WRITE.into()));
+assert!(rwx.contains(EXEC.into()));
+assert!(rwx.contains(READ | WRITE));
 
-    let read_only = READ;
-    assert!(!read_only.contains(WRITE));
-}
+let read_exec = READ | EXEC;
+assert!(!read_exec.contains(WRITE.into()));
+
+let flags = Permissions::from_str("read | 0x18 | write").unwrap();
+assert_eq!(format!("{flags}"), "read | write | 0x18");
+
+let flags: Vec<Permission> = flags.into_iter().collect();
+assert_eq!(
+    flags,
+    [
+        READ,
+        WRITE,
+        Permission::from_bit_retain(3),
+        Permission::from_bit_retain(4),
+    ]
+);
+
+let formatted: Vec<String> = flags.iter().map(|flag| format!("{flag}")).collect();
+assert_eq!(formatted, ["read", "write", "0x8", "0x10"]);
+
+let named_only: Vec<&'static str> = flags.iter().filter_map(BitFlag::name).collect();
+assert_eq!(named_only, ["read", "write"]);
 ```
 
 Constants can also be defined through an inherent implementation, a trait, or

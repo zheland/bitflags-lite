@@ -113,6 +113,7 @@ where
     /// type, all bits currently set, or all valid bits?
     ///
     /// `all_valid` makes the meaning explicit.
+    #[doc(alias = "all")]
     #[inline]
     #[must_use]
     pub const fn all_valid() -> Self
@@ -148,6 +149,20 @@ where
     where
         T: Copy,
     {
+        self.0
+    }
+
+    /// Consumes this flag set and returns the raw bits.
+    ///
+    /// This is the consuming counterpart to [`BitFlags::bits`].
+    /// Like [`BitFlags::bits`], the returned value may contain bits not present
+    /// in [`BitFlagsSpec::VALID_BITS_MASK`].
+    ///
+    /// This method does not require `T: Copy`, so it is available for storage
+    /// types that are not `Copy`.
+    #[inline]
+    #[must_use]
+    pub fn into_bits(self) -> T {
         self.0
     }
 
@@ -320,6 +335,7 @@ macro_rules! impl_bit_flags {
             ///
             /// Use [`BitFlags::from_bits_retain`] to keep invalid bits, or
             /// [`BitFlags::from_bits_truncate`] to clear them.
+            #[doc(alias = "from_bits")]
             #[inline]
             #[must_use]
             pub const fn try_from_bits(bits: $ty) -> Option<Self>
@@ -366,6 +382,7 @@ macro_rules! impl_bit_flags {
             ///
             /// Use [`BitFlags::truncate`] or [`BitFlags::from_bits_truncate`] to
             /// restrict a value to its valid bits.
+            #[doc(alias = "is_all")]
             #[inline]
             #[must_use]
             pub const fn is_valid(&self) -> bool
@@ -404,6 +421,14 @@ macro_rules! impl_bit_flags {
             #[inline]
             pub const fn insert(&mut self, other: Self) {
                 self.0 |= other.0;
+            }
+
+            /// Removes all bits from `self`, including any invalid bits.
+            ///
+            /// This is equivalent to assigning [`BitFlags::empty`] to `self`.
+            #[inline]
+            pub const fn clear(&mut self) {
+                self.0 = 0;
             }
 
             /// Clears all bits not present in
@@ -1064,6 +1089,20 @@ where
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         BitFlagsIter::new(self)
+    }
+}
+
+impl<T, U> IntoIterator for &BitFlags<T, U>
+where
+    T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
+    U: ?Sized,
+{
+    type IntoIter = BitFlagsIter<T, U>;
+    type Item = BitFlag<T, U>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        BitFlagsIter::new(*self)
     }
 }
 

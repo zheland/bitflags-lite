@@ -894,3 +894,55 @@ fn test_serde_named() {
          \"write\", \"exec\", or a valid hex flag",
     );
 }
+
+#[test]
+fn main() {
+    use bitflags_lite::{BitFlags, BitFlagsSpec, NameMatcher};
+    use core::str::FromStr;
+
+    #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
+    struct PermissionsTag;
+
+    impl BitFlagsSpec<u32> for PermissionsTag {
+        const VALID_BITS_MASK: u32 = (1 << 3) - 1;
+        const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+        const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
+    }
+
+    type Permission = BitFlag<u32, PermissionsTag>;
+    type Permissions = BitFlags<u32, PermissionsTag>;
+
+    // Constructors are `const` for concrete integer types.
+    const READ: Permission = Permission::try_from_bit(0).unwrap();
+    const WRITE: Permission = Permission::try_from_bit(1).unwrap();
+    const EXEC: Permission = Permission::try_from_bit(2).unwrap();
+
+    let rwx = READ | WRITE | EXEC;
+    assert!(rwx.contains(READ.into()));
+    assert!(rwx.contains(WRITE.into()));
+    assert!(rwx.contains(EXEC.into()));
+    assert!(rwx.contains(READ | WRITE));
+
+    let read_exec = READ | EXEC;
+    assert!(!read_exec.contains(WRITE.into()));
+
+    let flags = Permissions::from_str("read | 0x18 | write").unwrap();
+    assert_eq!(format!("{flags}"), "read | write | 0x18");
+
+    let flags: Vec<Permission> = flags.into_iter().collect();
+    assert_eq!(
+        flags,
+        [
+            READ,
+            WRITE,
+            Permission::from_bit_retain(3),
+            Permission::from_bit_retain(4),
+        ]
+    );
+
+    let formatted: Vec<String> = flags.iter().map(|flag| format!("{flag}")).collect();
+    assert_eq!(formatted, ["read", "write", "0x8", "0x10"]);
+
+    let named_only: Vec<&'static str> = flags.iter().filter_map(BitFlag::name).collect();
+    assert_eq!(named_only, ["read", "write"]);
+}

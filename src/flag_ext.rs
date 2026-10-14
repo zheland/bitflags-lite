@@ -37,6 +37,21 @@ where
         T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
+    /// Creates a bit flag from a [`BitFlags`] set.
+    ///
+    /// Returns `Some` if `flags` contains exactly one set bit and that bit is
+    /// valid according to [`BitFlagsSpec::VALID_BITS_MASK`].
+    ///
+    /// Returns `None` if `flags` is empty, has more than one bit set, or the
+    /// single set bit is not valid.
+    ///
+    /// This is equivalent to [`BitFlag::try_from_bits`] on `flags.bits()`.
+    #[must_use]
+    fn try_from_flags(flags: BitFlags<T, U>) -> Option<Self>
+    where
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>;
+
     /// Creates a single-bit flag from `bits` if exactly one bit is set.
     ///
     /// The single set bit is not checked against
@@ -60,6 +75,17 @@ where
     where
         T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
+
+    /// Returns the single-bit mask for this flag, or `None` if the bit index is
+    /// outside the width of `T`.
+    ///
+    /// The mask is `1 << bit`. It is not checked against
+    /// [`BitFlagsSpec::VALID_BITS_MASK`]; use [`BitFlag::is_valid`] when tag
+    /// validity is required.
+    #[must_use]
+    fn mask(&self) -> Option<T>
+    where
+        T: util::IntOpsExt;
 
     /// Returns the intersection of `self` and `other`.
     ///
@@ -152,9 +178,15 @@ where
         }
     }
 
-    /// Creates a single-bit flag from `bits` if exactly one bit is set.
-    ///
-    /// Returns `None` if `bits` is `0` or has more than one bit set.
+    #[inline]
+    fn try_from_flags(flags: BitFlags<T, U>) -> Option<Self>
+    where
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>,
+    {
+        Self::try_from_bits(flags.bits())
+    }
+
     #[inline]
     fn try_from_bits_retain(bits: T) -> Option<Self>
     where
@@ -183,6 +215,14 @@ where
         };
 
         usize::from(self.bit()) < max_bits && BitFlags::<T, U>::from_flag(*self).is_valid()
+    }
+
+    #[inline]
+    fn mask(&self) -> Option<T>
+    where
+        T: util::IntOpsExt,
+    {
+        T::ONE.checked_shl(u32::from(self.bit()))
     }
 
     #[inline]

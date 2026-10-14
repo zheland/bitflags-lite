@@ -57,6 +57,7 @@ where
     ///
     /// Use [`BitFlags::from_bits_retain`] to keep invalid bits, or
     /// [`BitFlags::from_bits_truncate`] to clear them.
+    #[doc(alias = "from_bits")]
     #[must_use]
     fn try_from_bits(bits: T) -> Option<Self>
     where
@@ -92,6 +93,7 @@ where
     ///
     /// Use [`BitFlags::truncate`] or [`BitFlags::from_bits_truncate`] to
     /// restrict a value to its valid bits.
+    #[doc(alias = "is_all")]
     #[must_use]
     fn is_valid(&self) -> bool
     where
@@ -116,6 +118,13 @@ where
     fn contains(&self, other: Self) -> bool
     where
         T: Copy + PartialEq + BitAnd<T, Output = T>;
+
+    /// Removes all bits from `self`, including any invalid bits.
+    ///
+    /// This is equivalent to assigning [`BitFlags::empty`] to `self`.
+    fn clear(&mut self)
+    where
+        T: util::IntOpsExt;
 
     /// Clears all bits not present in [`BitFlagsSpec::VALID_BITS_MASK`].
     ///
@@ -295,6 +304,14 @@ where
         T: Copy + PartialEq + BitAnd<T, Output = T>,
     {
         (self.bits() & other.bits()) == other.bits()
+    }
+
+    #[inline]
+    fn clear(&mut self)
+    where
+        T: util::IntOpsExt,
+    {
+        *self = Self::empty();
     }
 
     #[inline]

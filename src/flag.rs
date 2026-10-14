@@ -341,6 +341,25 @@ macro_rules! impl_bit_flag {
                 }
             }
 
+            /// Creates a bit flag from a [`BitFlags`] set.
+            ///
+            /// Returns `Some` if `flags` contains exactly one set bit and that
+            /// bit is valid according to [`BitFlagsSpec::VALID_BITS_MASK`].
+            ///
+            /// Returns `None` if `flags` is empty, has more than one bit set,
+            /// or the single set bit is not valid.
+            ///
+            /// This is equivalent to [`BitFlag::try_from_bits`] on
+            /// `flags.bits()`.
+            #[inline]
+            #[must_use]
+            pub const fn try_from_flags(flags: BitFlags<$ty, U>) -> Option<Self>
+            where
+                U: BitFlagsSpec<$ty>,
+            {
+                Self::try_from_bits(flags.bits())
+            }
+
             /// Creates a single-bit flag from `bits` if exactly one bit is set.
             ///
             /// The single set bit is not checked against
@@ -379,6 +398,24 @@ macro_rules! impl_bit_flag {
             {
                 #[expect(clippy::as_conversions, reason = "supported in const functions")]
                 ((self.0 as u32) < <$ty>::BITS && BitFlags::<$ty, U>::from_flag(*self).is_valid())
+            }
+
+            /// Returns the single-bit mask for this flag, or `None` if the bit index is
+            /// outside the width of `T`.
+            ///
+            /// The mask is `1 << bit`. It is not checked against
+            /// [`BitFlagsSpec::VALID_BITS_MASK`]; use [`BitFlag::is_valid`] when tag
+            /// validity is required.
+            #[inline]
+            #[must_use]
+            pub const fn mask(&self) -> Option<$ty> {
+                #[expect(clippy::as_conversions, reason = "supported in const functions")]
+                let bit = self.0 as u32;
+                if bit < <$ty>::BITS {
+                    Some(1 << bit)
+                } else {
+                    None
+                }
             }
 
             /// Returns the intersection of `self` and `other`.
@@ -511,6 +548,33 @@ where
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state);
+    }
+}
+
+/// Converts a flag set into a single-bit flag.
+///
+/// This fails unless `flags` contains exactly one set bit and that bit is
+/// valid for the tag. See [`BitFlag::try_from_flags`].
+impl<T, U> TryFrom<BitFlags<T, U>> for BitFlag<T, U>
+where
+    T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+    U: BitFlagsSpec<T>,
+{
+    type Error = BitFlagFromFlagsError;
+
+    #[inline]
+    fn try_from(flags: BitFlags<T, U>) -> Result<Self, Self::Error> {
+        let bits = flags.bits();
+        if bits.count_ones() == 1
+            && let Some(bit) = bits.lowest_one()
+            && let Ok(bit) = u8::try_from(bit)
+            && let Some(mask) = T::ONE.checked_shl(u32::from(bit))
+            && (mask & !U::VALID_BITS_MASK) == T::ZERO
+        {
+            Ok(Self::from_bit_retain(bit))
+        } else {
+            Err(BitFlagFromFlagsError)
+        }
     }
 }
 
@@ -941,3 +1005,19 @@ impl fmt::Display for BitFlagParseHexError {
 }
 
 impl core::error::Error for BitFlagParseHexError {}
+
+/// An error returned when converting [`BitFlags`] into a [`BitFlag`] fails.
+///
+/// The conversion fails if the flag set contains zero or more than one set
+/// bit, or if the single set bit is not valid for the tag.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
+pub struct BitFlagFromFlagsError;
+
+impl fmt::Display for BitFlagFromFlagsError {
+    #[expect(clippy::missing_inline_in_public_items, reason = "bloats binary size")]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "flags do not contain exactly one valid bit")
+    }
+}
+
+impl core::error::Error for BitFlagFromFlagsError {}
