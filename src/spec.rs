@@ -18,14 +18,14 @@
 /// # Examples
 ///
 /// ```
-/// use bitflags_lite::{BitFlags, BitFlagsSpec, ParserMatcher};
+/// use bitflags_lite::{BitFlags, BitFlagsSpec, NameMatcher};
 ///
 /// struct PermissionsTag;
 ///
 /// impl BitFlagsSpec<u32> for PermissionsTag {
 ///     const VALID_BITS_MASK: u32 = (1 << 3) - 1;
 ///     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-///     const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
+///     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 /// }
 ///
 /// type Permissions = BitFlags<u32, PermissionsTag>;
@@ -64,27 +64,27 @@ pub trait BitFlagsSpec<T> {
     /// `Deserialize` implementations for [`BitFlags`] parse named flags
     /// case-sensitively.
     ///
-    /// If [`ParserMatcher::Exact`], named flags are matched exactly.
-    /// If [`ParserMatcher::AsciiCaseInsensitive`], named flags are matched
+    /// If [`NameMatcher::Exact`], named flags are matched exactly.
+    /// If [`NameMatcher::AsciiCaseInsensitive`], named flags are matched
     /// using ASCII case-insensitive comparison.
     ///
     /// This value does not affect methods that accept an explicit
-    /// [`ParserMatcher`], such as [`BitFlags::try_from_str`] or
+    /// [`NameMatcher`], such as [`BitFlags::try_from_str`] or
     /// [`BitFlag::try_from_str`].
-    const DEFAULT_PARSER_MATCHER: ParserMatcher;
+    const DEFAULT_NAME_MATCHER: NameMatcher;
 }
 
 /// Controls how flag names are matched when parsing.
 ///
 /// # Why `#[non_exhaustive]`
 ///
-/// `ParserMatcher` is only used as an input parameter to parsing APIs, never
+/// `NameMatcher` is only used as an input parameter to parsing APIs, never
 /// returned as a result.
 /// `#[non_exhaustive]` is appropriate here because new matcher variants can
 /// then be added in minor releases without breaking callers.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 #[non_exhaustive]
-pub enum ParserMatcher {
+pub enum NameMatcher {
     /// Matches flag names exactly.
     Exact,
 
@@ -92,7 +92,7 @@ pub enum ParserMatcher {
     AsciiCaseInsensitive,
 }
 
-impl ParserMatcher {
+impl NameMatcher {
     /// Returns `true` if `given` matches `expected` according to this matcher.
     #[inline]
     #[must_use]

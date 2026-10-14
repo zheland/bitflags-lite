@@ -1,6 +1,6 @@
-use core::ops::{BitAnd, Not};
+use core::ops::{BitAnd, BitOr, BitXor, Not};
 
-use crate::{BitFlag, BitFlagsSpec, util};
+use crate::{BitFlag, BitFlags, BitFlagsExt, BitFlagsSpec, util};
 
 /// Extension trait providing generic, non-const equivalents of the
 /// type-specific inherent methods on [`BitFlag`].
@@ -22,7 +22,7 @@ where
     #[must_use]
     fn try_from_bit(i: u8) -> Option<Self>
     where
-        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::UintOpsExt,
+        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Creates a validated bit flag from `bits` if exactly one bit is
@@ -34,7 +34,7 @@ where
     #[must_use]
     fn try_from_bits(bits: T) -> Option<Self>
     where
-        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::UintOpsExt,
+        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Creates a single-bit flag from `bits` if exactly one bit is set.
@@ -44,9 +44,62 @@ where
     ///
     /// Returns `None` if `bits` is `0` or has more than one bit set.
     #[must_use]
-    fn try_maybe_invalid_from_bits(bits: T) -> Option<Self>
+    fn try_from_bits_retain(bits: T) -> Option<Self>
     where
-        T: util::UintOpsExt;
+        T: util::IntOpsExt;
+
+    /// Returns the intersection of `self` and `other`.
+    ///
+    /// This is a raw-bit operation.
+    /// Invalid bits in either operand are preserved when they are set
+    /// in both operands.
+    #[must_use]
+    fn intersection(self, other: Self) -> BitFlags<T, U>
+    where
+        T: Copy + BitAnd<T, Output = T> + util::IntOpsExt;
+
+    /// Returns the union of `self` and `other`.
+    ///
+    /// This is a raw-bit operation.
+    /// Invalid bits in either operand are preserved.
+    #[must_use]
+    fn union(self, other: Self) -> BitFlags<T, U>
+    where
+        T: Copy + BitOr<T, Output = T> + util::IntOpsExt;
+
+    /// Returns the difference of `self` and `other`.
+    ///
+    /// The result contains bits that are set in `self` but not in
+    /// `other`.
+    /// This is a raw-bit operation.
+    /// Invalid bits already present in `self` are preserved unless they
+    /// are also set in `other`.
+    #[must_use]
+    fn difference(self, other: Self) -> BitFlags<T, U>
+    where
+        T: Copy + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt;
+
+    /// Returns the symmetric difference of `self` and `other`.
+    ///
+    /// The result contains bits that are set in exactly one of `self`
+    /// or `other`.
+    /// This is a raw-bit operation.
+    /// Invalid bits participate and may be preserved.
+    #[must_use]
+    fn symmetric_difference(self, other: Self) -> BitFlags<T, U>
+    where
+        T: Copy + BitXor<T, Output = T> + util::IntOpsExt;
+
+    /// Returns the complement of `self`.
+    ///
+    /// All valid bits not set in `self` become set, and all invalid
+    /// bits become unset.
+    /// The result always contains only valid bits.
+    #[must_use]
+    fn complement(self) -> BitFlags<T, U>
+    where
+        T: Copy + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>;
 }
 
 impl<T, U> BitFlagExt<T, U> for BitFlag<T, U>
@@ -56,12 +109,12 @@ where
     #[inline]
     fn try_from_bit(i: u8) -> Option<Self>
     where
-        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::UintOpsExt,
+        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         let bits = T::ONE.checked_shl(u32::from(i))?;
         if (bits & !U::VALID_BITS_MASK) == T::ZERO {
-            Self::try_maybe_invalid_from_bit(i)
+            Self::try_from_bit_retain(i)
         } else {
             None
         }
@@ -70,7 +123,7 @@ where
     #[inline]
     fn try_from_bits(bits: T) -> Option<Self>
     where
-        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::UintOpsExt,
+        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         if bits.count_ones() == 1
@@ -87,17 +140,62 @@ where
     ///
     /// Returns `None` if `bits` is `0` or has more than one bit set.
     #[inline]
-    fn try_maybe_invalid_from_bits(bits: T) -> Option<Self>
+    fn try_from_bits_retain(bits: T) -> Option<Self>
     where
-        T: util::UintOpsExt,
+        T: util::IntOpsExt,
     {
         if bits.count_ones() == 1
             && let Some(bit) = bits.lowest_one()
             && let Ok(bit) = u8::try_from(bit)
         {
-            Self::try_maybe_invalid_from_bit(bit)
+            Self::try_from_bit_retain(bit)
         } else {
             None
         }
+    }
+
+    #[inline]
+    fn intersection(self, other: Self) -> BitFlags<T, U>
+    where
+        T: Copy + BitAnd<T, Output = T> + util::IntOpsExt,
+    {
+        <BitFlags<T, U> as BitFlagsExt<T, U>>::from_flag(self)
+            .intersection(<BitFlags<T, U> as BitFlagsExt<T, U>>::from_flag(other))
+    }
+
+    #[inline]
+    fn union(self, other: Self) -> BitFlags<T, U>
+    where
+        T: Copy + BitOr<T, Output = T> + util::IntOpsExt,
+    {
+        <BitFlags<T, U> as BitFlagsExt<T, U>>::from_flag(self)
+            .union(<BitFlags<T, U> as BitFlagsExt<T, U>>::from_flag(other))
+    }
+
+    #[inline]
+    fn difference(self, other: Self) -> BitFlags<T, U>
+    where
+        T: Copy + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+    {
+        <BitFlags<T, U> as BitFlagsExt<T, U>>::from_flag(self)
+            .difference(<BitFlags<T, U> as BitFlagsExt<T, U>>::from_flag(other))
+    }
+
+    #[inline]
+    fn symmetric_difference(self, other: Self) -> BitFlags<T, U>
+    where
+        T: Copy + BitXor<T, Output = T> + util::IntOpsExt,
+    {
+        <BitFlags<T, U> as BitFlagsExt<T, U>>::from_flag(self)
+            .symmetric_difference(<BitFlags<T, U> as BitFlagsExt<T, U>>::from_flag(other))
+    }
+
+    #[inline]
+    fn complement(self) -> BitFlags<T, U>
+    where
+        T: Copy + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>,
+    {
+        <BitFlags<T, U> as BitFlagsExt<T, U>>::from_flag(self).complement()
     }
 }

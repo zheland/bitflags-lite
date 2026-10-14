@@ -55,7 +55,7 @@ bitflags-lite = { version = "0.1.0-dev.0", features = [ "serde", "bytemuck" ] }
 Define a tag type and implement `BitFlagsSpec` for it:
 
 ```rust
-use bitflags_lite::{BitFlags, BitFlagsSpec, ParserMatcher};
+use bitflags_lite::{BitFlags, BitFlagsSpec, NameMatcher};
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
 struct PermissionsTag;
@@ -63,7 +63,7 @@ struct PermissionsTag;
 impl BitFlagsSpec<u32> for PermissionsTag {
     const VALID_BITS_MASK: u32 = (1 << 3) - 1;
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-    const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
+    const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 }
 
 type Permissions = BitFlags<u32, PermissionsTag>;

@@ -7,7 +7,7 @@ use core::marker::PhantomData;
 use core::ops::{BitAnd, BitOr, BitXor, Not};
 use core::str::FromStr;
 
-use crate::{BitFlags, BitFlagsSpec, ParserMatcher, util};
+use crate::{BitFlags, BitFlagsSpec, NameMatcher, util};
 
 /// A single named or indexed bit in a [`BitFlags`] set.
 ///
@@ -38,7 +38,7 @@ where
     /// Use [`BitFlag::try_from_bit`] when validation is required.
     #[inline]
     #[must_use]
-    pub const fn try_maybe_invalid_from_bit(i: u8) -> Option<Self> {
+    pub const fn try_from_bit_retain(i: u8) -> Option<Self> {
         let max_bits = const {
             size_of::<T>()
                 .checked_mul(8)
@@ -111,15 +111,12 @@ where
     /// flag nor a hexadecimal flag of the form `0x...` with exactly one bit
     /// set.
     #[inline]
-    pub fn try_from_str_or_err(
-        input: &str,
-        parser_matcher: ParserMatcher,
-    ) -> Result<Self, BitFlagParseError>
+    pub fn try_from_str(input: &str, parser_matcher: NameMatcher) -> Result<Self, BitFlagParseError>
     where
-        T: util::UintOpsExt,
+        T: util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
-        if let Some(flag) = Self::try_from_str(input, parser_matcher) {
+        if let Some(flag) = Self::from_str_opt(input, parser_matcher) {
             return Ok(flag);
         }
 
@@ -141,15 +138,15 @@ where
     /// Returns `None` if `input` is not recognized.
     #[inline]
     #[must_use]
-    pub fn try_from_str(input: &str, parser_matcher: ParserMatcher) -> Option<Self>
+    pub fn from_str_opt(input: &str, parser_matcher: NameMatcher) -> Option<Self>
     where
-        T: util::UintOpsExt,
+        T: util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
-        if let Some(flag) = Self::try_from_name(input, parser_matcher) {
+        if let Some(flag) = Self::from_name_opt(input, parser_matcher) {
             return Some(flag);
         }
-        if let Some(flag) = Self::try_from_hex(input) {
+        if let Some(flag) = Self::from_hex_opt(input) {
             return Some(flag);
         }
 
@@ -167,15 +164,15 @@ where
     /// Returns [`BitFlagParseNameError`] if `input` does not match any name or
     /// alias in [`BitFlagsSpec::FLAG_NAMES`].
     #[inline]
-    pub fn try_from_name_or_err(
+    pub fn try_from_name(
         input: &str,
-        parser_matcher: ParserMatcher,
+        parser_matcher: NameMatcher,
     ) -> Result<Self, BitFlagParseNameError>
     where
-        T: util::UintOpsExt,
+        T: util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
-        if let Some(flag) = Self::try_from_name(input, parser_matcher) {
+        if let Some(flag) = Self::from_name_opt(input, parser_matcher) {
             return Ok(flag);
         }
 
@@ -195,16 +192,16 @@ where
     /// Returns `None` if no name matches.
     #[inline]
     #[must_use]
-    pub fn try_from_name(input: &str, parser_matcher: ParserMatcher) -> Option<Self>
+    pub fn from_name_opt(input: &str, parser_matcher: NameMatcher) -> Option<Self>
     where
-        T: util::UintOpsExt,
+        T: util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         for (i, variants) in U::FLAG_NAMES.iter().enumerate() {
             let Ok(i) = u8::try_from(i) else {
                 break;
             };
-            let Some(bit_flag) = Self::try_maybe_invalid_from_bit(i) else {
+            let Some(bit_flag) = Self::try_from_bit_retain(i) else {
                 break;
             };
             for &expected in *variants {
@@ -228,11 +225,11 @@ where
     /// Returns [`BitFlagParseHexError`] if `input` is not a valid `0x`-prefixed
     /// hexadecimal flag with exactly one bit set.
     #[inline]
-    pub fn try_from_hex_or_err(input: &str) -> Result<Self, BitFlagParseHexError>
+    pub fn try_from_hex(input: &str) -> Result<Self, BitFlagParseHexError>
     where
-        T: util::UintOpsExt,
+        T: util::IntOpsExt,
     {
-        if let Some(flag) = Self::try_from_hex(input) {
+        if let Some(flag) = Self::from_hex_opt(input) {
             return Ok(flag);
         }
 
@@ -252,9 +249,9 @@ where
     /// Returns `None` if `input` is not a valid hexadecimal flag.
     #[inline]
     #[must_use]
-    pub fn try_from_hex(input: &str) -> Option<Self>
+    pub fn from_hex_opt(input: &str) -> Option<Self>
     where
-        T: util::UintOpsExt,
+        T: util::IntOpsExt,
     {
         let input = input.strip_prefix("0x")?;
         if input.starts_with('+') {
@@ -267,7 +264,7 @@ where
         }
         let bit = bits.lowest_one()?;
         let bit = u8::try_from(bit).ok()?;
-        Self::try_maybe_invalid_from_bit(bit)
+        Self::try_from_bit_retain(bit)
     }
 }
 
@@ -337,7 +334,7 @@ macro_rules! impl_bit_flag {
             /// Returns `None` if `bits` is `0` or has more than one bit set.
             #[inline]
             #[must_use]
-            pub const fn try_maybe_invalid_from_bits(bits: $ty) -> Option<Self> {
+            pub const fn try_from_bits_retain(bits: $ty) -> Option<Self> {
                 if bits.count_ones() == 1
                     && let Some(bit) = bits.lowest_one()
                 {
@@ -346,10 +343,72 @@ macro_rules! impl_bit_flag {
                         clippy::cast_possible_truncation,
                         reason = "supported in const functions"
                     )]
-                    Self::try_maybe_invalid_from_bit(bit as u8)
+                    Self::try_from_bit_retain(bit as u8)
                 } else {
                     None
                 }
+            }
+
+            /// Returns the intersection of `self` and `other`.
+            ///
+            /// This is a raw-bit operation.
+            /// Invalid bits in either operand are preserved when they are set
+            /// in both operands.
+            #[inline]
+            #[must_use]
+            pub const fn intersection(self, other: Self) -> BitFlags<$ty, U> {
+                BitFlags::<$ty, U>::from_flag(self)
+                    .intersection(BitFlags::<$ty, U>::from_flag(other))
+            }
+
+            /// Returns the union of `self` and `other`.
+            ///
+            /// This is a raw-bit operation.
+            /// Invalid bits in either operand are preserved.
+            #[inline]
+            #[must_use]
+            pub const fn union(self, other: Self) -> BitFlags<$ty, U> {
+                BitFlags::<$ty, U>::from_flag(self).union(BitFlags::<$ty, U>::from_flag(other))
+            }
+
+            /// Returns the difference of `self` and `other`.
+            ///
+            /// The result contains bits that are set in `self` but not in
+            /// `other`.
+            /// This is a raw-bit operation.
+            /// Invalid bits already present in `self` are preserved unless they
+            /// are also set in `other`.
+            #[inline]
+            #[must_use]
+            pub const fn difference(self, other: Self) -> BitFlags<$ty, U> {
+                BitFlags::<$ty, U>::from_flag(self).difference(BitFlags::<$ty, U>::from_flag(other))
+            }
+
+            /// Returns the symmetric difference of `self` and `other`.
+            ///
+            /// The result contains bits that are set in exactly one of `self`
+            /// or `other`.
+            /// This is a raw-bit operation.
+            /// Invalid bits participate and may be preserved.
+            #[inline]
+            #[must_use]
+            pub const fn symmetric_difference(self, other: Self) -> BitFlags<$ty, U> {
+                BitFlags::<$ty, U>::from_flag(self)
+                    .symmetric_difference(BitFlags::<$ty, U>::from_flag(other))
+            }
+
+            /// Returns the complement of `self`.
+            ///
+            /// All valid bits not set in `self` become set, and all invalid
+            /// bits become unset.
+            /// The result always contains only valid bits.
+            #[inline]
+            #[must_use]
+            pub const fn complement(self) -> BitFlags<$ty, U>
+            where
+                U: BitFlagsSpec<$ty>,
+            {
+                BitFlags::<$ty, U>::from_flag(self).complement()
             }
         }
     };
@@ -460,7 +519,7 @@ where
 
 impl<T, U> BitAnd<Self> for BitFlag<T, U>
 where
-    T: BitAnd<T, Output = T> + util::UintOpsExt,
+    T: BitAnd<T, Output = T> + util::IntOpsExt,
     U: ?Sized,
 {
     type Output = BitFlags<T, U>;
@@ -473,7 +532,7 @@ where
 
 impl<T, U> BitOr<Self> for BitFlag<T, U>
 where
-    T: BitOr<T, Output = T> + util::UintOpsExt,
+    T: BitOr<T, Output = T> + util::IntOpsExt,
     U: ?Sized,
 {
     type Output = BitFlags<T, U>;
@@ -486,7 +545,7 @@ where
 
 impl<T, U> BitXor<Self> for BitFlag<T, U>
 where
-    T: BitXor<T, Output = T> + util::UintOpsExt,
+    T: BitXor<T, Output = T> + util::IntOpsExt,
     U: ?Sized,
 {
     type Output = BitFlags<T, U>;
@@ -499,7 +558,7 @@ where
 
 impl<T, U> Not for BitFlag<T, U>
 where
-    T: Not<Output = T> + BitAnd<T, Output = T> + util::UintOpsExt,
+    T: Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Output = BitFlags<T, U>;
@@ -522,7 +581,7 @@ where
         {
             write!(f, "{name}")
         } else {
-            write!(f, "{bit:#x}")
+            write!(f, "{:#x}", 1 << bit)
         }
     }
 }
@@ -590,14 +649,14 @@ where
 
 impl<T, U> FromStr for BitFlag<T, U>
 where
-    T: util::UintOpsExt,
+    T: util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Err = BitFlagParseError;
 
     #[inline]
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Self::try_from_str_or_err(input, U::DEFAULT_PARSER_MATCHER)
+        Self::try_from_str(input, U::DEFAULT_NAME_MATCHER)
     }
 }
 
@@ -659,7 +718,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de, T, U> serde::Deserialize<'de> for BitFlag<T, U>
 where
-    T: util::UintOpsExt,
+    T: util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
@@ -675,7 +734,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<T, U> serde::de::Visitor<'_> for BitFlagVisitor<T, U>
 where
-    T: util::UintOpsExt,
+    T: util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Value = BitFlag<T, U>;
@@ -694,6 +753,13 @@ where
 }
 
 /// An error encountered while parsing flags from text.
+#[cfg_attr(
+    not(feature = "alloc"),
+    expect(
+        missing_copy_implementations,
+        reason = "the payload is feature-dependent"
+    )
+)]
 #[derive(Clone, Debug)]
 pub struct BitFlagParseError {
     #[cfg(not(feature = "alloc"))]
@@ -724,6 +790,9 @@ impl fmt::Display for BitFlagParseError {
         write!(f, "expected ")?;
         fmt_expected(f, self.expected)?;
 
+        #[cfg(not(feature = "alloc"))]
+        let () = self.given;
+
         Ok(())
     }
 }
@@ -753,6 +822,13 @@ fn fmt_expected(
 }
 
 /// An error returned when parsing a named flag fails.
+#[cfg_attr(
+    not(feature = "alloc"),
+    expect(
+        missing_copy_implementations,
+        reason = "the payload is feature-dependent"
+    )
+)]
 #[derive(Clone, Debug)]
 pub struct BitFlagParseNameError {
     #[cfg(not(feature = "alloc"))]
@@ -783,6 +859,9 @@ impl fmt::Display for BitFlagParseNameError {
             fmt_expected(f, self.expected)?;
         }
 
+        #[cfg(not(feature = "alloc"))]
+        let () = self.given;
+
         Ok(())
     }
 }
@@ -809,6 +888,13 @@ fn fmt_expected_name(
 }
 
 /// An error returned when parsing a hexadecimal flag fails.
+#[cfg_attr(
+    not(feature = "alloc"),
+    expect(
+        missing_copy_implementations,
+        reason = "the payload is feature-dependent"
+    )
+)]
 #[derive(Clone, Debug)]
 pub struct BitFlagParseHexError {
     #[cfg(not(feature = "alloc"))]
@@ -823,7 +909,11 @@ impl fmt::Display for BitFlagParseHexError {
         write!(f, "unrecognized hex flag")?;
 
         #[cfg(feature = "alloc")]
-        write!(f, ", given: \"{}\", expected ", self.given)?;
+        write!(f, ", given: \"{}\"", self.given)?;
+        write!(f, ", expected a valid hex flag with \"0x\" prefix")?;
+
+        #[cfg(not(feature = "alloc"))]
+        let () = self.given;
 
         Ok(())
     }

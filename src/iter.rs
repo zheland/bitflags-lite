@@ -22,7 +22,7 @@ where
 
 impl<T, U> BitFlagsIter<T, U>
 where
-    T: Copy + Not<Output = T> + BitAndAssign<T> + util::UintOpsExt,
+    T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     /// Creates an iterator over the set bits in `flags`.
@@ -69,7 +69,7 @@ where
 
 impl<T, U> Iterator for BitFlagsIter<T, U>
 where
-    T: Copy + Not<Output = T> + BitAndAssign<T> + util::UintOpsExt,
+    T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     type Item = BitFlag<T, U>;
@@ -99,7 +99,7 @@ where
             clippy::cast_possible_truncation,
             reason = "types longer than 256 bits are not supported"
         )]
-        BitFlag::try_maybe_invalid_from_bit(lowest as u8)
+        BitFlag::try_from_bit_retain(lowest as u8)
     }
 
     #[expect(clippy::as_conversions, reason = "T::count_ones never exceeds `usize`")]
@@ -112,7 +112,7 @@ where
 
 impl<T, U> DoubleEndedIterator for BitFlagsIter<T, U>
 where
-    T: Copy + Not<Output = T> + BitAndAssign<T> + util::UintOpsExt,
+    T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -140,13 +140,13 @@ where
             clippy::cast_possible_truncation,
             reason = "types longer than 256 bits are not supported"
         )]
-        BitFlag::try_maybe_invalid_from_bit(lowest as u8)
+        BitFlag::try_from_bit_retain(lowest as u8)
     }
 }
 
 impl<T, U> ExactSizeIterator for BitFlagsIter<T, U>
 where
-    T: Copy + Not<Output = T> + BitAndAssign<T> + util::UintOpsExt,
+    T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     #[expect(clippy::as_conversions, reason = "T::count_ones never exceeds `usize`")]
@@ -158,7 +158,7 @@ where
 
 impl<T, U> FusedIterator for BitFlagsIter<T, U>
 where
-    T: Copy + Not<Output = T> + BitAndAssign<T> + util::UintOpsExt,
+    T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
 }

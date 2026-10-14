@@ -10,7 +10,7 @@ use core::ops::{
 };
 use core::str::FromStr;
 
-use crate::{BitFlag, BitFlagsIter, BitFlagsSpec, ParserMatcher, util};
+use crate::{BitFlag, BitFlagsIter, BitFlagsSpec, NameMatcher, util};
 
 /// A type-safe set of flags stored in an unsigned integer `T`.
 ///
@@ -37,14 +37,14 @@ use crate::{BitFlag, BitFlagsIter, BitFlagsSpec, ParserMatcher, util};
 /// # Examples
 ///
 /// ```
-/// use bitflags_lite::{BitFlags, BitFlagsSpec, ParserMatcher};
+/// use bitflags_lite::{BitFlags, BitFlagsSpec, NameMatcher};
 ///
 /// struct PermissionsTag;
 ///
 /// impl BitFlagsSpec<u32> for PermissionsTag {
 ///     const VALID_BITS_MASK: u32 = (1 << 3) - 1;
 ///     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-///     const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
+///     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 /// }
 ///
 /// type Permissions = BitFlags<u32, PermissionsTag>;
@@ -75,7 +75,7 @@ where
 /// [`FromStr`](core::str::FromStr) implementation: an empty string, a
 /// `|`-separated list of named flags, and/or `0x`-prefixed hexadecimal flags.
 /// Named flags are matched according to
-/// [`BitFlagsSpec::DEFAULT_PARSER_MATCHER`].
+/// [`BitFlagsSpec::DEFAULT_NAME_MATCHER`].
 ///
 /// Deserialization does not validate the parsed bits against
 /// [`BitFlagsSpec::VALID_BITS_MASK`].
@@ -96,7 +96,7 @@ where
     #[must_use]
     pub const fn empty() -> Self
     where
-        T: util::UintOpsExt,
+        T: util::IntOpsExt,
     {
         Self(T::ZERO, PhantomData)
     }
@@ -170,7 +170,7 @@ where
     #[inline]
     pub const fn iter(self) -> BitFlagsIter<T, U>
     where
-        T: Copy + Not<Output = T> + BitAndAssign<T> + util::UintOpsExt,
+        T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
     {
         BitFlagsIter::new(self)
     }
@@ -197,7 +197,7 @@ where
     pub fn try_from_str(
         input: &str,
         separator: &str,
-        parser_matcher: ParserMatcher,
+        parser_matcher: NameMatcher,
     ) -> Result<Self, BitFlagsParseError>
     where
         T: Default
@@ -205,7 +205,7 @@ where
             + BitAndAssign<T>
             + BitOrAssign<T>
             + Shl<usize, Output = T>
-            + util::UintOpsExt,
+            + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         if input.trim().is_empty() {
@@ -217,7 +217,7 @@ where
         for input in input {
             let input = input.trim();
 
-            let flag = BitFlag::try_from_name(input, parser_matcher);
+            let flag = BitFlag::from_name_opt(input, parser_matcher);
             if let Some(flag) = flag {
                 this |= flag;
                 continue;
@@ -542,7 +542,7 @@ where
 
 impl<T, U> PartialEq<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: Copy + PartialEq + util::UintOpsExt,
+    T: Copy + PartialEq + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -553,7 +553,7 @@ where
 
 impl<T, U> PartialEq<BitFlags<T, U>> for BitFlag<T, U>
 where
-    T: Copy + PartialEq + util::UintOpsExt,
+    T: Copy + PartialEq + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -586,7 +586,7 @@ where
 
 impl<T, U> PartialOrd<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: Copy + PartialOrd + util::UintOpsExt,
+    T: Copy + PartialOrd + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -597,7 +597,7 @@ where
 
 impl<T, U> PartialOrd<BitFlags<T, U>> for BitFlag<T, U>
 where
-    T: Copy + PartialOrd + util::UintOpsExt,
+    T: Copy + PartialOrd + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -630,7 +630,7 @@ where
 
 impl<T, U> From<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: util::UintOpsExt,
+    T: util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -677,7 +677,7 @@ where
 
 impl<T, U> BitAnd<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: BitAnd<T, Output = T> + util::UintOpsExt,
+    T: BitAnd<T, Output = T> + util::IntOpsExt,
     U: ?Sized,
 {
     type Output = Self;
@@ -690,7 +690,7 @@ where
 
 impl<T, U> BitAnd<BitFlags<T, U>> for BitFlag<T, U>
 where
-    T: BitAnd<T, Output = T> + util::UintOpsExt,
+    T: BitAnd<T, Output = T> + util::IntOpsExt,
     U: ?Sized,
 {
     type Output = BitFlags<T, U>;
@@ -714,7 +714,7 @@ where
 
 impl<T, U> BitAndAssign<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: BitAndAssign<T> + util::UintOpsExt,
+    T: BitAndAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -738,7 +738,7 @@ where
 
 impl<T, U> BitOr<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: BitOr<T, Output = T> + util::UintOpsExt,
+    T: BitOr<T, Output = T> + util::IntOpsExt,
     U: ?Sized,
 {
     type Output = Self;
@@ -751,7 +751,7 @@ where
 
 impl<T, U> BitOr<BitFlags<T, U>> for BitFlag<T, U>
 where
-    T: BitOr<T, Output = T> + util::UintOpsExt,
+    T: BitOr<T, Output = T> + util::IntOpsExt,
     U: ?Sized,
 {
     type Output = BitFlags<T, U>;
@@ -775,7 +775,7 @@ where
 
 impl<T, U> BitOrAssign<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: BitOrAssign<T> + util::UintOpsExt,
+    T: BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -799,7 +799,7 @@ where
 
 impl<T, U> BitXor<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: BitXor<T, Output = T> + util::UintOpsExt,
+    T: BitXor<T, Output = T> + util::IntOpsExt,
     U: ?Sized,
 {
     type Output = Self;
@@ -812,7 +812,7 @@ where
 
 impl<T, U> BitXor<BitFlags<T, U>> for BitFlag<T, U>
 where
-    T: BitXor<T, Output = T> + util::UintOpsExt,
+    T: BitXor<T, Output = T> + util::IntOpsExt,
     U: ?Sized,
 {
     type Output = BitFlags<T, U>;
@@ -836,7 +836,7 @@ where
 
 impl<T, U> BitXorAssign<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: BitXorAssign<T> + util::UintOpsExt,
+    T: BitXorAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -860,7 +860,7 @@ where
 
 impl<T, U> Sub<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: Not<Output = T> + BitAnd<T, Output = T> + util::UintOpsExt,
+    T: Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
     U: ?Sized,
 {
     type Output = Self;
@@ -884,7 +884,7 @@ where
 
 impl<T, U> SubAssign<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: Not<Output = T> + BitAndAssign<T> + util::UintOpsExt,
+    T: Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -914,7 +914,7 @@ where
         + BitAnd<T, Output = T>
         + Shl<usize, Output = T>
         + fmt::LowerHex
-        + util::UintOpsExt,
+        + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[expect(clippy::missing_inline_in_public_items, reason = "bloats binary size")]
@@ -1014,20 +1014,20 @@ where
         + BitOrAssign<T>
         + Shl<usize, Output = T>
         + FromStr
-        + util::UintOpsExt,
+        + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Err = BitFlagsParseError;
 
     #[inline]
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Self::try_from_str(input, "|", U::DEFAULT_PARSER_MATCHER)
+        Self::try_from_str(input, "|", U::DEFAULT_NAME_MATCHER)
     }
 }
 
 impl<T, U> IntoIterator for BitFlags<T, U>
 where
-    T: Copy + Not<Output = T> + BitAndAssign<T> + util::UintOpsExt,
+    T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     type IntoIter = BitFlagsIter<T, U>;
@@ -1057,7 +1057,7 @@ where
 
 impl<T, U> Extend<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: BitOrAssign<T> + util::UintOpsExt,
+    T: BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -1091,7 +1091,7 @@ where
 
 impl<T, U> FromIterator<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: Default + BitOrAssign<T> + util::UintOpsExt,
+    T: Default + BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -1156,7 +1156,7 @@ where
         + BitAnd<T, Output = T>
         + Shl<usize, Output = T>
         + fmt::LowerHex
-        + util::UintOpsExt,
+        + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
@@ -1179,7 +1179,7 @@ where
         + BitOrAssign<T>
         + Shl<usize, Output = T>
         + FromStr
-        + util::UintOpsExt,
+        + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
@@ -1201,7 +1201,7 @@ where
         + BitOrAssign<T>
         + Shl<usize, Output = T>
         + FromStr
-        + util::UintOpsExt,
+        + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Value = BitFlags<T, U>;
@@ -1220,6 +1220,13 @@ where
 }
 
 /// An error encountered while parsing flags from text.
+#[cfg_attr(
+    not(feature = "alloc"),
+    expect(
+        missing_copy_implementations,
+        reason = "the payload is feature-dependent"
+    )
+)]
 #[derive(Clone, Debug)]
 pub struct BitFlagsParseError {
     #[cfg(not(feature = "alloc"))]
@@ -1249,6 +1256,9 @@ impl fmt::Display for BitFlagsParseError {
         #[cfg(not(feature = "alloc"))]
         write!(f, "expected ")?;
         fmt_expected(f, self.expected)?;
+
+        #[cfg(not(feature = "alloc"))]
+        let () = self.given;
 
         Ok(())
     }

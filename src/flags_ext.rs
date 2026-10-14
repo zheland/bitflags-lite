@@ -17,9 +17,9 @@ where
     /// This retains the bit index from `bit_flag` without validating it against
     /// the width of `T` or [`BitFlagsSpec::VALID_BITS_MASK`].
     #[must_use]
-    fn from_bit_flag(bit_flag: BitFlag<T, U>) -> Self
+    fn from_flag(bit_flag: BitFlag<T, U>) -> Self
     where
-        T: util::UintOpsExt;
+        T: util::IntOpsExt;
 
     /// Creates a flag set with only the bit at index `bit` set.
     ///
@@ -31,7 +31,7 @@ where
     #[must_use]
     fn from_bit_retain(bit: u8) -> Self
     where
-        T: util::UintOpsExt;
+        T: util::IntOpsExt;
 
     /// Creates a flag set from bit index `bit` if that bit is valid.
     ///
@@ -40,7 +40,7 @@ where
     #[must_use]
     fn try_from_bit(bit: u8) -> Option<Self>
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::UintOpsExt,
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Creates a flag set from raw bits if all set bits are valid.
@@ -53,7 +53,7 @@ where
     #[must_use]
     fn try_from_bits(bits: T) -> Option<Self>
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::UintOpsExt,
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Creates a flag set from raw bits, clearing any bits not present in
@@ -81,7 +81,7 @@ where
     #[must_use]
     fn is_empty(&self) -> bool
     where
-        T: Copy + PartialEq + util::UintOpsExt;
+        T: Copy + PartialEq + util::IntOpsExt;
 
     /// Returns `true` if `self` and `other` have at least one set bit in
     /// common.
@@ -91,7 +91,7 @@ where
     #[must_use]
     fn intersects(&self, other: Self) -> bool
     where
-        T: Copy + PartialEq + BitAnd<T, Output = T> + util::UintOpsExt;
+        T: Copy + PartialEq + BitAnd<T, Output = T> + util::IntOpsExt;
 
     /// Returns `true` if all bits set in `other` are also set in `self`.
     ///
@@ -197,9 +197,9 @@ where
     U: ?Sized,
 {
     #[inline]
-    fn from_bit_flag(bit_flag: BitFlag<T, U>) -> Self
+    fn from_flag(bit_flag: BitFlag<T, U>) -> Self
     where
-        T: util::UintOpsExt,
+        T: util::IntOpsExt,
     {
         Self::from_bit_retain(bit_flag.bit())
     }
@@ -207,7 +207,7 @@ where
     #[inline]
     fn from_bit_retain(bit: u8) -> Self
     where
-        T: util::UintOpsExt,
+        T: util::IntOpsExt,
     {
         T::ONE
             .checked_shl(u32::from(bit))
@@ -217,7 +217,7 @@ where
     #[inline]
     fn try_from_bit(bit: u8) -> Option<Self>
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::UintOpsExt,
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         T::ONE
@@ -228,7 +228,7 @@ where
     #[inline]
     fn try_from_bits(bits: T) -> Option<Self>
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::UintOpsExt,
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         (bits & !U::VALID_BITS_MASK == T::ZERO).then(|| Self::from_bits_retain(bits))
@@ -255,7 +255,7 @@ where
     #[inline]
     fn is_empty(&self) -> bool
     where
-        T: Copy + PartialEq + util::UintOpsExt,
+        T: Copy + PartialEq + util::IntOpsExt,
     {
         self.bits() == T::ZERO
     }
@@ -263,7 +263,7 @@ where
     #[inline]
     fn intersects(&self, other: Self) -> bool
     where
-        T: Copy + PartialEq + BitAnd<T, Output = T> + util::UintOpsExt,
+        T: Copy + PartialEq + BitAnd<T, Output = T> + util::IntOpsExt,
     {
         (self.bits() & other.bits()) != T::ZERO
     }

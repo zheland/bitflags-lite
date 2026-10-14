@@ -10,7 +10,7 @@ use core::num::ParseIntError;
 ///
 /// It abstracts over the concrete integer types so that generic code can use
 /// the same operations.
-pub trait UintOpsExt: Sized {
+pub trait IntOpsExt: Sized {
     /// The value `0`.
     const ZERO: Self;
 
@@ -54,7 +54,7 @@ pub trait UintOpsExt: Sized {
 // See: https://github.com/rust-lang/rust/issues/143874
 macro_rules! impl_uint_opt_ext {
     ($ty:ty) => {
-        impl UintOpsExt for $ty {
+        impl IntOpsExt for $ty {
             const ZERO: Self = 0;
             const ONE: Self = 1;
 

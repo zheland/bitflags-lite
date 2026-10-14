@@ -7,7 +7,7 @@ use core::cmp::Ordering;
 use core::fmt::{self, Write};
 use core::str::FromStr;
 
-use bitflags_lite::{BitFlag, BitFlags, BitFlagsIter, BitFlagsSpec, ParserMatcher};
+use bitflags_lite::{BitFlag, BitFlags, BitFlagsIter, BitFlagsSpec, NameMatcher};
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
 struct PermsTag;
@@ -23,13 +23,13 @@ type UnnamedPerms = BitFlags<u8, UnnamedPermsTag>;
 impl BitFlagsSpec<u8> for PermsTag {
     const VALID_BITS_MASK: u8 = (1 << 3) - 1;
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-    const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
+    const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 }
 
 impl BitFlagsSpec<u8> for UnnamedPermsTag {
     const VALID_BITS_MASK: u8 = (1 << 3) - 1;
     const FLAG_NAMES: &[&[&str]] = &[];
-    const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
+    const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 }
 
 const NONE: Perms = Perms::empty();
@@ -37,7 +37,6 @@ const READ: Perm = Perm::try_from_bit(0).unwrap();
 const WRITE: Perm = Perm::try_from_bit(1).unwrap();
 const EXEC: Perm = Perm::try_from_bit(2).unwrap();
 
-const U_NONE: UnnamedPerms = UnnamedPerms::empty();
 const U_READ: UnnamedPerm = UnnamedPerm::try_from_bit(0).unwrap();
 const U_WRITE: UnnamedPerm = UnnamedPerm::try_from_bit(1).unwrap();
 const U_EXEC: UnnamedPerm = UnnamedPerm::try_from_bit(2).unwrap();
@@ -516,12 +515,12 @@ fn test_from_case_sensitive_str() {
     impl BitFlagsSpec<u8> for CsPermsTag {
         const VALID_BITS_MASK: u8 = (1 << 3) - 1;
         const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-        const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
+        const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
     }
 
     for valid in ["read", "  read  "] {
         assert_eq!(
-            CsPerms::try_from_str(valid, "|", ParserMatcher::Exact)
+            CsPerms::try_from_str(valid, "|", NameMatcher::Exact)
                 .unwrap()
                 .bits(),
             0b1
@@ -529,7 +528,7 @@ fn test_from_case_sensitive_str() {
     }
 
     for invalid in ["READ", "Read", "  ReAd  ", "readed", "readable", "r", "d"] {
-        assert!(CsPerms::try_from_str(invalid, "|", ParserMatcher::Exact).is_err());
+        assert!(CsPerms::try_from_str(invalid, "|", NameMatcher::Exact).is_err());
     }
 }
 
@@ -543,12 +542,12 @@ fn test_from_case_insensitive_str() {
     impl BitFlagsSpec<u8> for CiPermsTag {
         const VALID_BITS_MASK: u8 = (1 << 3) - 1;
         const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-        const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::AsciiCaseInsensitive;
+        const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::AsciiCaseInsensitive;
     }
 
     for valid in ["read", "  read  ", "READ", "Read", "  ReAd  "] {
         assert_eq!(
-            CiPerms::try_from_str(valid, "|", ParserMatcher::AsciiCaseInsensitive)
+            CiPerms::try_from_str(valid, "|", NameMatcher::AsciiCaseInsensitive)
                 .unwrap()
                 .bits(),
             0b1
@@ -556,7 +555,7 @@ fn test_from_case_insensitive_str() {
     }
 
     for invalid in ["red", "readed", "readable", "r", "d"] {
-        assert!(CiPerms::try_from_str(invalid, "|", ParserMatcher::AsciiCaseInsensitive).is_err());
+        assert!(CiPerms::try_from_str(invalid, "|", NameMatcher::AsciiCaseInsensitive).is_err());
     }
 }
 
@@ -602,7 +601,7 @@ fn test_skipped_flag_names() {
             &["seventh", "SEVENTH"],
             &[],
         ];
-        const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
+        const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
     }
 
     assert_eq!(
@@ -659,7 +658,7 @@ fn test_flag_names_overflow() {
             &["ninth"],
             &["tenth"],
         ];
-        const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
+        const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
     }
 
     assert_eq!(Flags::from_str("eighth").unwrap().bits(), 0b1000_0000);
@@ -808,7 +807,7 @@ fn test_serde_unnamed() {
         &(U_READ | U_WRITE | UnnamedPerms::from_bits_truncate(0b1000)),
         &[Token::Str("0x3")],
     );
-    assert_tokens(&U_NONE, &[Token::Str("")]);
+    assert_tokens(&UnnamedPerms::empty(), &[Token::Str("")]);
 
     assert_de_tokens(&(U_READ | U_EXEC), &[Token::Str("0x0005")]);
 
