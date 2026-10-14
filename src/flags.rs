@@ -361,6 +361,15 @@ macro_rules! impl_bit_flags {
                 self.0 == 0
             }
 
+            #[inline]
+            #[must_use]
+            pub const fn is_valid(&self) -> bool
+            where
+                U: BitFlagsSpec<$ty>,
+            {
+                self.bits() & !U::VALID_BITS_MASK == 0
+            }
+
             /// Returns `true` if `self` and `other` have at least one set bit in
             /// common.
             ///

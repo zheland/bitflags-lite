@@ -83,6 +83,12 @@ where
     where
         T: Copy + PartialEq + util::IntOpsExt;
 
+    #[must_use]
+    fn is_valid(&self) -> bool
+    where
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>;
+
     /// Returns `true` if `self` and `other` have at least one set bit in
     /// common.
     ///
@@ -258,6 +264,15 @@ where
         T: Copy + PartialEq + util::IntOpsExt,
     {
         self.bits() == T::ZERO
+    }
+
+    #[inline]
+    fn is_valid(&self) -> bool
+    where
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>,
+    {
+        self.bits() & !U::VALID_BITS_MASK == T::ZERO
     }
 
     #[inline]
