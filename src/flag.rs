@@ -428,34 +428,22 @@ impl_bit_flag!(i64);
 impl_bit_flag!(i128);
 impl_bit_flag!(isize);
 
-impl<T, U> Copy for BitFlag<T, U>
-where
-    T: Copy,
-    U: ?Sized,
-{
-}
+impl<T, U> Copy for BitFlag<T, U> where U: ?Sized {}
 
 impl<T, U> Clone for BitFlag<T, U>
 where
-    T: Clone,
     U: ?Sized,
 {
     #[inline]
     fn clone(&self) -> Self {
-        Self(self.0, PhantomData, PhantomData)
+        *self
     }
 }
 
-impl<T, U> Eq for BitFlag<T, U>
-where
-    T: Eq,
-    U: ?Sized,
-{
-}
+impl<T, U> Eq for BitFlag<T, U> where U: ?Sized {}
 
 impl<T, U> PartialEq for BitFlag<T, U>
 where
-    T: PartialEq,
     U: ?Sized,
 {
     #[inline]
@@ -466,7 +454,6 @@ where
 
 impl<T, U> Ord for BitFlag<T, U>
 where
-    T: Ord,
     U: ?Sized,
 {
     #[inline]
@@ -477,18 +464,16 @@ where
 
 impl<T, U> PartialOrd for BitFlag<T, U>
 where
-    T: PartialOrd,
     U: ?Sized,
 {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0)
+        Some(self.cmp(other))
     }
 }
 
 impl<T, U> Hash for BitFlag<T, U>
 where
-    T: Hash,
     U: ?Sized,
 {
     #[inline]
@@ -588,7 +573,6 @@ where
 
 impl<T, U> fmt::Debug for BitFlag<T, U>
 where
-    T: fmt::LowerHex,
     U: ?Sized,
 {
     #[expect(clippy::missing_inline_in_public_items, reason = "bloats binary size")]
@@ -605,7 +589,6 @@ where
 
 impl<T, U> fmt::Binary for BitFlag<T, U>
 where
-    T: fmt::Binary,
     U: ?Sized,
 {
     #[inline]
@@ -616,7 +599,6 @@ where
 
 impl<T, U> fmt::Octal for BitFlag<T, U>
 where
-    T: fmt::Octal,
     U: ?Sized,
 {
     #[inline]
@@ -627,7 +609,6 @@ where
 
 impl<T, U> fmt::LowerHex for BitFlag<T, U>
 where
-    T: fmt::LowerHex,
     U: ?Sized,
 {
     #[inline]
@@ -638,7 +619,6 @@ where
 
 impl<T, U> fmt::UpperHex for BitFlag<T, U>
 where
-    T: fmt::UpperHex,
     U: ?Sized,
 {
     #[inline]
@@ -696,12 +676,7 @@ where
 #[cfg(feature = "bytemuck")]
 #[cfg_attr(docsrs, doc(cfg(feature = "bytemuck")))]
 // SAFETY: All fields are valid when their memory is entirely zeroed out.
-unsafe impl<T, U> bytemuck::Zeroable for BitFlag<T, U>
-where
-    T: bytemuck::Zeroable,
-    U: ?Sized,
-{
-}
+unsafe impl<T, U> bytemuck::Zeroable for BitFlag<T, U> where U: ?Sized {}
 
 #[cfg(feature = "bytemuck")]
 #[cfg_attr(docsrs, doc(cfg(feature = "bytemuck")))]
@@ -709,7 +684,7 @@ where
 // bit pattern of the correct size is a valid instance of this type.
 unsafe impl<T, U> bytemuck::Pod for BitFlag<T, U>
 where
-    T: bytemuck::Pod,
+    T: 'static,
     U: 'static + ?Sized,
 {
 }
