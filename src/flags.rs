@@ -12,7 +12,7 @@ use core::str::FromStr;
 
 use crate::{BitFlag, BitFlagsIter, BitFlagsSpec, NameMatcher, util};
 
-/// A type-safe set of flags stored in an unsigned integer `T`.
+/// A type-safe set of flags stored in an integer `T`.
 ///
 /// The second type parameter `U` is a tag type that distinguishes flag sets
 /// that share the same storage type.
@@ -178,8 +178,9 @@ where
     /// Parses a flag set from a string.
     ///
     /// The input may be empty, which returns [`BitFlags::empty`].
-    /// Otherwise it is split on `|`, and each part is trimmed and matched
-    /// against the names in [`BitFlagsSpec::FLAG_NAMES`].
+    /// Otherwise it is split on given `separator`, and each part is trimmed and
+    /// matched against the names in [`BitFlagsSpec::FLAG_NAMES`].
+    /// Match behavior is specified by `name_matcher`.
     /// A part may also be a hexadecimal flag with a `0x` prefix.
     ///
     /// This method does not validate or truncate the parsed bits against
@@ -197,7 +198,7 @@ where
     pub fn try_from_str(
         input: &str,
         separator: &str,
-        parser_matcher: NameMatcher,
+        name_matcher: NameMatcher,
     ) -> Result<Self, BitFlagsParseError>
     where
         T: BitOrAssign<T> + util::IntOpsExt,
@@ -212,7 +213,7 @@ where
         for input in input {
             let input = input.trim();
 
-            let flag = BitFlag::from_name_opt(input, parser_matcher);
+            let flag = BitFlag::from_name_opt(input, name_matcher);
             if let Some(flag) = flag {
                 this |= flag;
                 continue;

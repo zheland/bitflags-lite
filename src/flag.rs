@@ -99,7 +99,7 @@ where
         }
     }
 
-    /// Parses a single flag from `input` using `parser_matcher`.
+    /// Parses a single flag from `input` using `name_matcher`.
     ///
     /// This is equivalent to [`BitFlag::try_from_str`], but returns a
     /// [`BitFlagParseError`] describing the input and expected names on
@@ -111,12 +111,12 @@ where
     /// flag nor a hexadecimal flag of the form `0x...` with exactly one bit
     /// set.
     #[inline]
-    pub fn try_from_str(input: &str, parser_matcher: NameMatcher) -> Result<Self, BitFlagParseError>
+    pub fn try_from_str(input: &str, name_matcher: NameMatcher) -> Result<Self, BitFlagParseError>
     where
         T: util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
-        if let Some(flag) = Self::from_str_opt(input, parser_matcher) {
+        if let Some(flag) = Self::from_str_opt(input, name_matcher) {
             return Ok(flag);
         }
 
@@ -129,7 +129,7 @@ where
         Err(BitFlagParseError { given, expected })
     }
 
-    /// Parses a single flag from `input` using `parser_matcher`.
+    /// Parses a single flag from `input` using `name_matcher`.
     ///
     /// The input is first matched against the names and aliases in
     /// [`BitFlagsSpec::FLAG_NAMES`]. If no name matches, it is parsed as a
@@ -138,12 +138,12 @@ where
     /// Returns `None` if `input` is not recognized.
     #[inline]
     #[must_use]
-    pub fn from_str_opt(input: &str, parser_matcher: NameMatcher) -> Option<Self>
+    pub fn from_str_opt(input: &str, name_matcher: NameMatcher) -> Option<Self>
     where
         T: util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
-        if let Some(flag) = Self::from_name_opt(input, parser_matcher) {
+        if let Some(flag) = Self::from_name_opt(input, name_matcher) {
             return Some(flag);
         }
         if let Some(flag) = Self::from_hex_opt(input) {
@@ -153,7 +153,7 @@ where
         None
     }
 
-    /// Parses a named flag from `input` using `parser_matcher`.
+    /// Parses a named flag from `input` using `name_matcher`.
     ///
     /// This is equivalent to [`BitFlag::try_from_name`], but returns a
     /// [`BitFlagParseNameError`] describing the input and expected names on
@@ -166,13 +166,13 @@ where
     #[inline]
     pub fn try_from_name(
         input: &str,
-        parser_matcher: NameMatcher,
+        name_matcher: NameMatcher,
     ) -> Result<Self, BitFlagParseNameError>
     where
         T: util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
-        if let Some(flag) = Self::from_name_opt(input, parser_matcher) {
+        if let Some(flag) = Self::from_name_opt(input, name_matcher) {
             return Ok(flag);
         }
 
@@ -185,14 +185,14 @@ where
         Err(BitFlagParseNameError { given, expected })
     }
 
-    /// Parses a named flag from `input` using `parser_matcher`.
+    /// Parses a named flag from `input` using `name_matcher`.
     ///
     /// The input is matched against all names and aliases in
     /// [`BitFlagsSpec::FLAG_NAMES`].
     /// Returns `None` if no name matches.
     #[inline]
     #[must_use]
-    pub fn from_name_opt(input: &str, parser_matcher: NameMatcher) -> Option<Self>
+    pub fn from_name_opt(input: &str, name_matcher: NameMatcher) -> Option<Self>
     where
         T: util::IntOpsExt,
         U: BitFlagsSpec<T>,
@@ -205,7 +205,7 @@ where
                 break;
             };
             for &expected in *variants {
-                let is_matched = parser_matcher.matches(input, expected);
+                let is_matched = name_matcher.matches(input, expected);
                 if is_matched {
                     return Some(bit_flag);
                 }
@@ -566,7 +566,9 @@ where
         {
             write!(f, "{name}")
         } else {
-            write!(f, "{:#x}", 1 << bit)
+            let leading = 1 << (bit % 4);
+            let num_zeroes = bit / 4;
+            write!(f, "0x{leading}{:0<num_zeroes$}", "")
         }
     }
 }
@@ -579,7 +581,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "BitFlag({:#x}, PhantomData<{}>, PhantomData<{}>)",
+            "BitFlag(1 << {}, PhantomData<{}>, PhantomData<{}>)",
             self.0,
             type_name::<T>(),
             type_name::<U>(),
@@ -593,7 +595,11 @@ where
 {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Binary::fmt(&self.0, f)
+        if f.alternate() {
+            write!(f, "0b")?;
+        }
+        let bit = usize::from(self.0);
+        write!(f, "1{:0<bit$}", "")
     }
 }
 
@@ -603,7 +609,13 @@ where
 {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Octal::fmt(&self.0, f)
+        if f.alternate() {
+            write!(f, "0o")?;
+        }
+        let bit = usize::from(self.0);
+        let leading = 1 << (bit % 3);
+        let num_zeroes = bit / 3;
+        write!(f, "{leading}{:0<num_zeroes$}", "")
     }
 }
 
@@ -613,7 +625,13 @@ where
 {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(&self.0, f)
+        if f.alternate() {
+            write!(f, "0x")?;
+        }
+        let bit = usize::from(self.0);
+        let leading = 1 << (bit % 4);
+        let num_zeroes = bit / 4;
+        write!(f, "{leading}{:0<num_zeroes$}", "")
     }
 }
 
@@ -623,7 +641,13 @@ where
 {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::UpperHex::fmt(&self.0, f)
+        if f.alternate() {
+            write!(f, "0x")?;
+        }
+        let bit = usize::from(self.0);
+        let leading = 1 << (bit % 4);
+        let num_zeroes = bit / 4;
+        write!(f, "{leading}{:0<num_zeroes$}", "")
     }
 }
 

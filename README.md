@@ -99,6 +99,7 @@ you prefer.
 |:--:|:--:|:--:|:--:|
 | Automatically deduced flag names | ⛔️ No | ✅ Yes | ✅ Yes |
 | Automatically deduced valid bits | ⛔️ No | ✅ Yes | ✅ Yes |
+| Automatically sync names and valid bits | ⛔️ No | ✅ Yes | ✅ Yes |
 | Most methods const | ✅ Yes | ✅ Yes | ⚠️ Limited |
 | Multi-bit flags | ⛔️ No | ✅ Yes | ⛔️ No |
 | Single-flag vs set distinction | ✅ Yes | ⛔️ No | ✅ Yes |
