@@ -338,19 +338,6 @@ macro_rules! impl_bit_flags {
                 Self(bits & U::VALID_BITS_MASK, PhantomData)
             }
 
-            /// Clears all bits not present in
-            /// [`BitFlagsSpec::VALID_BITS_MASK`].
-            ///
-            /// This leaves `self` unchanged if it already contains only valid
-            /// bits.
-            #[inline]
-            pub const fn truncate(&mut self)
-            where
-                U: BitFlagsSpec<$ty>,
-            {
-                self.0 &= U::VALID_BITS_MASK
-            }
-
             /// Returns `true` if no bits are set.
             ///
             /// This checks the raw stored bits.
@@ -399,6 +386,19 @@ macro_rules! impl_bit_flags {
             #[inline]
             pub const fn insert(&mut self, other: Self) {
                 self.0 |= other.0;
+            }
+
+            /// Clears all bits not present in
+            /// [`BitFlagsSpec::VALID_BITS_MASK`].
+            ///
+            /// This leaves `self` unchanged if it already contains only valid
+            /// bits.
+            #[inline]
+            pub const fn truncate(&mut self)
+            where
+                U: BitFlagsSpec<$ty>,
+            {
+                self.0 &= U::VALID_BITS_MASK
             }
 
             /// Removes all bits from `other`.

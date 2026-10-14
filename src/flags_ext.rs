@@ -66,14 +66,6 @@ where
         T: BitAnd<T, Output = T>,
         U: BitFlagsSpec<T>;
 
-    /// Clears all bits not present in [`BitFlagsSpec::VALID_BITS_MASK`].
-    ///
-    /// This leaves `self` unchanged if it already contains only valid bits.
-    fn truncate(&mut self)
-    where
-        T: BitAndAssign<T>,
-        U: BitFlagsSpec<T>;
-
     /// Returns `true` if no bits are set.
     ///
     /// This checks the raw stored bits.
@@ -107,6 +99,14 @@ where
     fn contains(&self, other: Self) -> bool
     where
         T: Copy + PartialEq + BitAnd<T, Output = T>;
+
+    /// Clears all bits not present in [`BitFlagsSpec::VALID_BITS_MASK`].
+    ///
+    /// This leaves `self` unchanged if it already contains only valid bits.
+    fn truncate(&mut self)
+    where
+        T: BitAndAssign<T>,
+        U: BitFlagsSpec<T>;
 
     /// Inserts all bits from `other`.
     ///
@@ -250,15 +250,6 @@ where
     }
 
     #[inline]
-    fn truncate(&mut self)
-    where
-        T: BitAndAssign<T>,
-        U: BitFlagsSpec<T>,
-    {
-        *self.bits_mut() &= U::VALID_BITS_MASK;
-    }
-
-    #[inline]
     fn is_empty(&self) -> bool
     where
         T: Copy + PartialEq + util::IntOpsExt,
@@ -289,6 +280,15 @@ where
         T: Copy + PartialEq + BitAnd<T, Output = T>,
     {
         (self.bits() & other.bits()) == other.bits()
+    }
+
+    #[inline]
+    fn truncate(&mut self)
+    where
+        T: BitAndAssign<T>,
+        U: BitFlagsSpec<T>,
+    {
+        *self.bits_mut() &= U::VALID_BITS_MASK;
     }
 
     #[inline]
