@@ -7,7 +7,7 @@ use core::cmp::Ordering;
 use core::fmt::{self, Write};
 use core::str::FromStr;
 
-use bitflags_lite::{BitFlags, BitFlagsIter, BitFlagsSpec};
+use bitflags_lite::{BitFlag, BitFlags, BitFlagsIter, BitFlagsSpec, ParserMatcher};
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
 struct PermsTag;
@@ -15,30 +15,32 @@ struct PermsTag;
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
 struct UnnamedPermsTag;
 
+type Perm = BitFlag<u8, PermsTag>;
 type Perms = BitFlags<u8, PermsTag>;
+type UnnamedPerm = BitFlag<u8, UnnamedPermsTag>;
 type UnnamedPerms = BitFlags<u8, UnnamedPermsTag>;
 
 impl BitFlagsSpec<u8> for PermsTag {
-    const VALID_BITS: u8 = (1 << 3) - 1;
+    const VALID_BITS_MASK: u8 = (1 << 3) - 1;
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-    const IS_DEFAULT_PARSING_ASCII_CASE_SENSITIVE: bool = true;
+    const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
 }
 
 impl BitFlagsSpec<u8> for UnnamedPermsTag {
-    const VALID_BITS: u8 = (1 << 3) - 1;
+    const VALID_BITS_MASK: u8 = (1 << 3) - 1;
     const FLAG_NAMES: &[&[&str]] = &[];
-    const IS_DEFAULT_PARSING_ASCII_CASE_SENSITIVE: bool = true;
+    const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
 }
 
 const NONE: Perms = Perms::empty();
-const READ: Perms = Perms::from_bits(1 << 0).unwrap();
-const WRITE: Perms = Perms::from_bits(1 << 1).unwrap();
-const EXEC: Perms = Perms::from_bits(1 << 2).unwrap();
+const READ: Perm = Perm::try_from_bit(0).unwrap();
+const WRITE: Perm = Perm::try_from_bit(1).unwrap();
+const EXEC: Perm = Perm::try_from_bit(2).unwrap();
 
 const U_NONE: UnnamedPerms = UnnamedPerms::empty();
-const U_READ: UnnamedPerms = UnnamedPerms::from_bits(1 << 0).unwrap();
-const U_WRITE: UnnamedPerms = UnnamedPerms::from_bits(1 << 1).unwrap();
-const U_EXEC: UnnamedPerms = UnnamedPerms::from_bits(1 << 2).unwrap();
+const U_READ: UnnamedPerm = UnnamedPerm::try_from_bit(0).unwrap();
+const U_WRITE: UnnamedPerm = UnnamedPerm::try_from_bit(1).unwrap();
+const U_EXEC: UnnamedPerm = UnnamedPerm::try_from_bit(2).unwrap();
 
 #[test]
 fn test_empty() {
@@ -58,16 +60,16 @@ fn test_all_valid() {
 
 #[test]
 fn test_from_bits() {
-    assert_eq!(Perms::from_bits(0b1), Some(READ));
-    assert_eq!(Perms::from_bits(0b10), Some(WRITE));
-    assert_eq!(Perms::from_bits(0b11), Some(READ | WRITE));
-    assert_eq!(Perms::from_bits(0b100), Some(EXEC));
-    assert_eq!(Perms::from_bits(0b110), Some(WRITE | EXEC));
-    assert_eq!(Perms::from_bits(0b111), Some(READ | WRITE | EXEC));
-    assert_eq!(Perms::from_bits(0b1000), None);
-    assert_eq!(Perms::from_bits(0b1100), None);
-    assert_eq!(Perms::from_bits(0b1110), None);
-    assert_eq!(Perms::from_bits(0b1111), None);
+    assert_eq!(Perms::try_from_bits(0b1), Some(READ.into()));
+    assert_eq!(Perms::try_from_bits(0b10), Some(WRITE.into()));
+    assert_eq!(Perms::try_from_bits(0b11), Some(READ | WRITE));
+    assert_eq!(Perms::try_from_bits(0b100), Some(EXEC.into()));
+    assert_eq!(Perms::try_from_bits(0b110), Some(WRITE | EXEC));
+    assert_eq!(Perms::try_from_bits(0b111), Some(READ | WRITE | EXEC));
+    assert_eq!(Perms::try_from_bits(0b1000), None);
+    assert_eq!(Perms::try_from_bits(0b1100), None);
+    assert_eq!(Perms::try_from_bits(0b1110), None);
+    assert_eq!(Perms::try_from_bits(0b1111), None);
 }
 
 #[test]
@@ -86,8 +88,8 @@ fn test_from_truncate() {
 
 #[test]
 fn test_from_retain() {
-    assert_eq!(Perms::from_bits(1 << 3), None);
-    let bit4 = Perms::from_bits_retain(1 << 3);
+    assert_eq!(Perms::try_from_bits(0b1000), None);
+    let bit4 = Perms::from_bits_retain(0b1000);
     assert_eq!(bit4.bits(), 0b1000);
 
     assert_eq!(Perms::from_bits_retain(0b1), READ);
@@ -120,20 +122,20 @@ fn test_truncate() {
 
 #[test]
 fn test_intersects() {
-    assert!(READ.intersects(READ));
-    assert!(!READ.intersects(WRITE));
+    assert!(Perms::from(READ).intersects(READ.into()));
+    assert!(!Perms::from(READ).intersects(WRITE.into()));
     assert!((READ | WRITE).intersects(READ | WRITE));
     assert!((READ | WRITE).intersects(WRITE | EXEC));
-    assert!(!READ.intersects(WRITE | EXEC));
+    assert!(!Perms::from(READ).intersects(WRITE | EXEC));
 }
 
 #[test]
 fn test_contains() {
-    assert!(READ.contains(READ));
-    assert!(!READ.contains(WRITE));
+    assert!(Perms::from(READ).contains(READ.into()));
+    assert!(!Perms::from(READ).contains(WRITE.into()));
     assert!((READ | WRITE).contains(READ | WRITE));
     assert!(!(READ | WRITE).contains(WRITE | EXEC));
-    assert!(!READ.contains(WRITE | EXEC));
+    assert!(!Perms::from(READ).contains(WRITE | EXEC));
     assert!((READ | WRITE | EXEC).contains(WRITE | EXEC));
 }
 
@@ -141,29 +143,29 @@ fn test_contains() {
 fn test_insert_remove_toggle_set() {
     let mut perms = NONE;
 
-    perms.insert(READ);
+    perms.insert(READ.into());
     assert_eq!(perms, READ);
-    perms.insert(READ);
+    perms.insert(READ.into());
     assert_eq!(perms, READ);
-    perms.remove(READ);
+    perms.remove(READ.into());
     assert_eq!(perms, NONE);
-    perms.remove(READ);
+    perms.remove(READ.into());
     assert_eq!(perms, NONE);
-    perms.toggle(READ);
+    perms.toggle(READ.into());
     assert_eq!(perms, READ);
 
-    perms.insert(WRITE);
+    perms.insert(WRITE.into());
     assert_eq!(perms, READ | WRITE);
-    perms.remove(WRITE);
+    perms.remove(WRITE.into());
     assert_eq!(perms, READ);
-    perms.toggle(WRITE);
+    perms.toggle(WRITE.into());
     assert_eq!(perms, READ | WRITE);
-    perms.toggle(READ);
+    perms.toggle(READ.into());
     assert_eq!(perms, WRITE);
 
-    perms.set(EXEC, false);
+    perms.set(EXEC.into(), false);
     assert_eq!(perms, WRITE);
-    perms.set(EXEC, true);
+    perms.set(EXEC.into(), true);
     assert_eq!(perms, WRITE | EXEC);
 
     perms.toggle(READ | WRITE | EXEC);
@@ -172,53 +174,59 @@ fn test_insert_remove_toggle_set() {
 
 #[test]
 fn test_intersection() {
-    assert_eq!(NONE.intersection(READ), NONE);
-    assert_eq!(READ.intersection(READ), READ);
-    assert_eq!(READ.intersection(WRITE), NONE);
+    assert_eq!(NONE.intersection(READ.into()), NONE);
+    assert_eq!(Perms::from(READ).intersection(READ.into()), READ);
+    assert_eq!(Perms::from(READ).intersection(WRITE.into()), NONE);
     assert_eq!((READ | WRITE).intersection(READ | WRITE), READ | WRITE);
     assert_eq!((READ | WRITE).intersection(WRITE | EXEC), WRITE);
-    assert_eq!(READ.intersection(WRITE | EXEC), NONE);
+    assert_eq!(Perms::from(READ).intersection(WRITE | EXEC), NONE);
 }
 
 #[test]
 fn test_union() {
-    assert_eq!(NONE.union(READ), READ);
-    assert_eq!(READ.union(READ), READ);
-    assert_eq!(READ.union(WRITE), READ | WRITE);
+    assert_eq!(NONE.union(READ.into()), READ);
+    assert_eq!(Perms::from(READ).union(READ.into()), READ);
+    assert_eq!(Perms::from(READ).union(WRITE.into()), READ | WRITE);
     assert_eq!((READ | WRITE).union(READ | WRITE), READ | WRITE);
     assert_eq!((READ | WRITE).union(WRITE | EXEC), READ | WRITE | EXEC);
-    assert_eq!(READ.union(WRITE | EXEC), READ | WRITE | EXEC);
+    assert_eq!(Perms::from(READ).union(WRITE | EXEC), READ | WRITE | EXEC);
 }
 
 #[test]
 fn test_difference() {
-    assert_eq!(NONE.difference(READ), NONE);
-    assert_eq!(READ.difference(READ), NONE);
-    assert_eq!(READ.difference(WRITE), READ);
+    assert_eq!(NONE.difference(READ.into()), NONE);
+    assert_eq!(Perms::from(READ).difference(READ.into()), NONE);
+    assert_eq!(Perms::from(READ).difference(WRITE.into()), READ);
     assert_eq!((READ | WRITE).difference(READ | WRITE), NONE);
     assert_eq!((READ | WRITE).difference(WRITE | EXEC), READ);
-    assert_eq!(READ.difference(WRITE | EXEC), READ);
+    assert_eq!(Perms::from(READ).difference(WRITE | EXEC), READ);
 }
 
 #[test]
 fn test_symmetric_difference() {
-    assert_eq!(NONE.symmetric_difference(READ), READ);
-    assert_eq!(READ.symmetric_difference(READ), NONE);
-    assert_eq!(READ.symmetric_difference(WRITE), READ | WRITE);
+    assert_eq!(NONE.symmetric_difference(READ.into()), READ);
+    assert_eq!(Perms::from(READ).symmetric_difference(READ.into()), NONE);
+    assert_eq!(
+        Perms::from(READ).symmetric_difference(WRITE.into()),
+        READ | WRITE
+    );
     assert_eq!((READ | WRITE).symmetric_difference(READ | WRITE), NONE);
     assert_eq!(
         (READ | WRITE).symmetric_difference(WRITE | EXEC),
         READ | EXEC
     );
-    assert_eq!(READ.symmetric_difference(WRITE | EXEC), READ | WRITE | EXEC);
+    assert_eq!(
+        Perms::from(READ).symmetric_difference(WRITE | EXEC),
+        READ | WRITE | EXEC
+    );
 }
 
 #[test]
 fn test_complement() {
     assert_eq!(NONE.complement(), READ | WRITE | EXEC);
-    assert_eq!(READ.complement(), WRITE | EXEC);
-    assert_eq!(WRITE.complement(), READ | EXEC);
-    assert_eq!(EXEC.complement(), READ | WRITE);
+    assert_eq!(Perms::from(READ).complement(), WRITE | EXEC);
+    assert_eq!(Perms::from(WRITE).complement(), READ | EXEC);
+    assert_eq!(Perms::from(EXEC).complement(), READ | WRITE);
     assert_eq!((READ | WRITE).complement(), EXEC);
     assert_eq!((WRITE | EXEC).complement(), READ);
     assert_eq!((READ | EXEC).complement(), WRITE);
@@ -257,52 +265,8 @@ fn test_iterator() {
     let none = NONE;
     assert_eq!(none.iter().len(), 0);
     assert_eq!(none.iter().size_hint(), (0, Some(0)));
-    assert_eq!(none.iter().collect::<Vec<_>>(), vec![]);
-    assert_eq!(none.iter().rev().collect::<Vec<_>>(), vec![]);
-}
-
-#[test]
-fn test_names_iterator() {
-    let rwx = READ | WRITE | EXEC;
-    assert_eq!(rwx.iter_names_only().size_hint(), (0, Some(3)));
-    assert_eq!(
-        rwx.iter_names_only().collect::<Vec<_>>(),
-        vec!["read", "write", "exec"]
-    );
-    assert_eq!(
-        rwx.iter_names_only().rev().collect::<Vec<_>>(),
-        vec!["exec", "write", "read"]
-    );
-
-    let rw = READ | WRITE;
-    assert_eq!(rw.iter_names_only().size_hint(), (0, Some(2)));
-    assert_eq!(
-        rw.iter_names_only().collect::<Vec<_>>(),
-        vec!["read", "write"]
-    );
-    assert_eq!(
-        rw.iter_names_only().rev().collect::<Vec<_>>(),
-        vec!["write", "read"]
-    );
-
-    let none = NONE;
-    assert_eq!(none.iter_names_only().size_hint(), (0, Some(0)));
-    assert_eq!(none.iter_names_only().collect::<Vec<_>>(), vec![""; 0]);
-    assert_eq!(
-        none.iter_names_only().rev().collect::<Vec<_>>(),
-        vec![""; 0]
-    );
-
-    let rw = READ | WRITE | Perms::from_bits_retain(0b1000_1000);
-    assert_eq!(rw.iter_names_only().size_hint(), (0, Some(4)));
-    assert_eq!(
-        rw.iter_names_only().collect::<Vec<_>>(),
-        vec!["read", "write"]
-    );
-    assert_eq!(
-        rw.iter_names_only().rev().collect::<Vec<_>>(),
-        vec!["write", "read"]
-    );
+    assert_eq!(none.iter().collect::<Vec<_>>(), vec![NONE; 0]);
+    assert_eq!(none.iter().rev().collect::<Vec<_>>(), vec![NONE; 0]);
 }
 
 #[test]
@@ -343,15 +307,15 @@ fn test_cmp() {
     let mut set = [
         Perms::from_bits_retain(0b1000),
         Perms::from_bits_retain(0b1010),
-        READ,
-        WRITE,
-        EXEC,
+        READ.into(),
+        WRITE.into(),
+        EXEC.into(),
         READ | WRITE,
         WRITE | EXEC,
         EXEC | READ,
-        READ,
-        WRITE,
-        EXEC,
+        READ.into(),
+        WRITE.into(),
+        EXEC.into(),
         READ | WRITE | EXEC,
         NONE,
     ];
@@ -360,13 +324,13 @@ fn test_cmp() {
         set,
         [
             NONE,
-            READ,
-            READ,
-            WRITE,
-            WRITE,
+            READ.into(),
+            READ.into(),
+            WRITE.into(),
+            WRITE.into(),
             READ | WRITE,
-            EXEC,
-            EXEC,
+            EXEC.into(),
+            EXEC.into(),
             READ | EXEC,
             WRITE | EXEC,
             READ | WRITE | EXEC,
@@ -393,9 +357,9 @@ fn test_hash() {
     assert_ne!(hash(&READ), hash(&Perms::from_bits_retain(0b1000)));
 
     let input = [
-        READ,
+        READ.into(),
         WRITE | EXEC,
-        READ,
+        READ.into(),
         READ | WRITE | EXEC,
         Perms::from_bits_retain(0b1000),
         Perms::from_bits_retain(0b1010),
@@ -405,13 +369,13 @@ fn test_hash() {
     let set: HashSet<_> = input.into_iter().collect();
 
     assert_eq!(set.len(), 5);
-    assert!(set.contains(&READ));
+    assert!(set.contains(&Perms::from(READ)));
     assert!(set.contains(&(WRITE | EXEC)));
     assert!(set.contains(&(READ | WRITE | EXEC)));
     assert!(set.contains(&Perms::from_bits_retain(0b1000)));
     assert!(set.contains(&Perms::from_bits_retain(0b1010)));
     assert!(!set.contains(&NONE));
-    assert!(!set.contains(&WRITE));
+    assert!(!set.contains(&Perms::from(WRITE)));
     assert!(!set.contains(&(READ | WRITE)));
     assert!(!set.contains(&(READ | EXEC)));
 }
@@ -484,19 +448,15 @@ fn test_fmt_unnamed() {
 
     assert_eq!(
         format!("{rwx:?}"),
-        "BitFlags(0xf, PhantomData<basic::UnnamedPermsTag>)"
+        "BitFlags(0xf, PhantomData<flags::UnnamedPermsTag>)"
     );
     assert_eq!(
         format!("{rwx:#?}"),
-        "BitFlags(0xf, PhantomData<basic::UnnamedPermsTag>)"
+        "BitFlags(0xf, PhantomData<flags::UnnamedPermsTag>)"
     );
     assert_eq!(
         format!("{:?}", rwx.into_iter()),
-        "BitFlagsIter(BitFlags(0xf, PhantomData<basic::UnnamedPermsTag>))"
-    );
-    assert_eq!(
-        format!("{:?}", rwx.iter_names_only()),
-        "BitFlagsIterNamesOnly(BitFlags(0xf, PhantomData<basic::UnnamedPermsTag>))"
+        "BitFlagsIter(BitFlags(0xf, PhantomData<flags::UnnamedPermsTag>))"
     );
 }
 
@@ -517,15 +477,15 @@ fn test_fmt_named() {
 
     assert_eq!(
         format!("{rwx:?}"),
-        "BitFlags(0xf, PhantomData<basic::PermsTag>)"
+        "BitFlags(0xf, PhantomData<flags::PermsTag>)"
     );
     assert_eq!(
         format!("{rwx:#?}"),
-        "BitFlags(0xf, PhantomData<basic::PermsTag>)"
+        "BitFlags(0xf, PhantomData<flags::PermsTag>)"
     );
     assert_eq!(
         format!("{:?}", rwx.into_iter()),
-        "BitFlagsIter(BitFlags(0xf, PhantomData<basic::PermsTag>))"
+        "BitFlagsIter(BitFlags(0xf, PhantomData<flags::PermsTag>))"
     );
 }
 
@@ -554,14 +514,14 @@ fn test_from_case_sensitive_str() {
     type CsPerms = BitFlags<u8, CsPermsTag>;
 
     impl BitFlagsSpec<u8> for CsPermsTag {
-        const VALID_BITS: u8 = (1 << 3) - 1;
+        const VALID_BITS_MASK: u8 = (1 << 3) - 1;
         const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-        const IS_DEFAULT_PARSING_ASCII_CASE_SENSITIVE: bool = true;
+        const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
     }
 
     for valid in ["read", "  read  "] {
         assert_eq!(
-            CsPerms::from_ascii_case_sensitive_str(valid)
+            CsPerms::try_from_str(valid, "|", ParserMatcher::Exact)
                 .unwrap()
                 .bits(),
             0b1
@@ -569,7 +529,7 @@ fn test_from_case_sensitive_str() {
     }
 
     for invalid in ["READ", "Read", "  ReAd  ", "readed", "readable", "r", "d"] {
-        assert!(CsPerms::from_ascii_case_sensitive_str(invalid).is_err());
+        assert!(CsPerms::try_from_str(invalid, "|", ParserMatcher::Exact).is_err());
     }
 }
 
@@ -581,14 +541,14 @@ fn test_from_case_insensitive_str() {
     type CiPerms = BitFlags<u8, CiPermsTag>;
 
     impl BitFlagsSpec<u8> for CiPermsTag {
-        const VALID_BITS: u8 = (1 << 3) - 1;
+        const VALID_BITS_MASK: u8 = (1 << 3) - 1;
         const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-        const IS_DEFAULT_PARSING_ASCII_CASE_SENSITIVE: bool = false;
+        const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::AsciiCaseInsensitive;
     }
 
     for valid in ["read", "  read  ", "READ", "Read", "  ReAd  "] {
         assert_eq!(
-            CiPerms::from_ascii_case_insensitive_str(valid)
+            CiPerms::try_from_str(valid, "|", ParserMatcher::AsciiCaseInsensitive)
                 .unwrap()
                 .bits(),
             0b1
@@ -596,21 +556,29 @@ fn test_from_case_insensitive_str() {
     }
 
     for invalid in ["red", "readed", "readable", "r", "d"] {
-        assert!(CiPerms::from_ascii_case_insensitive_str(invalid).is_err());
+        assert!(CiPerms::try_from_str(invalid, "|", ParserMatcher::AsciiCaseInsensitive).is_err());
     }
 }
 
 #[test]
 fn test_collect() {
     assert_eq!(
-        [READ, READ, EXEC].into_iter().collect::<Perms>(),
+        [Perms::from(READ), READ.into(), EXEC.into()]
+            .into_iter()
+            .collect::<Perms>(),
         READ | EXEC
     );
 
     assert_eq!(
-        [READ, NONE, WRITE, NONE, Perms::from_bits_retain(0b1000)]
-            .into_iter()
-            .collect::<Perms>(),
+        [
+            Perms::from(READ),
+            NONE,
+            WRITE.into(),
+            NONE,
+            Perms::from_bits_retain(0b1000)
+        ]
+        .into_iter()
+        .collect::<Perms>(),
         READ | WRITE | Perms::from_bits_retain(0b1000)
     );
 }
@@ -623,7 +591,7 @@ fn test_skipped_flag_names() {
     type Flags = BitFlags<u8, FlagsTag>;
 
     impl BitFlagsSpec<u8> for FlagsTag {
-        const VALID_BITS: u8 = 0b1111_1111;
+        const VALID_BITS_MASK: u8 = 0b1111_1111;
         const FLAG_NAMES: &[&[&str]] = &[
             &[],
             &["second"],
@@ -634,7 +602,7 @@ fn test_skipped_flag_names() {
             &["seventh", "SEVENTH"],
             &[],
         ];
-        const IS_DEFAULT_PARSING_ASCII_CASE_SENSITIVE: bool = false;
+        const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
     }
 
     assert_eq!(
@@ -657,17 +625,16 @@ fn test_skipped_flag_names() {
     #[cfg(feature = "alloc")]
     assert_eq!(
         Flags::from_str("first").err().unwrap().to_string(),
-        "unrecognized named flag or hex flag, given: \"first\", \
-         expected \"\", or a \"|\"-separated set of \
-         \"second\", \"fourth\", \"fifth\", \"seventh\", or a valid hex flag"
+        "unrecognized named flag or hex flag, given: \"first\", expected \"\", or a \
+         \"|\"-separated set of \"second\", \"fourth\", \"fifth\", \"seventh\", or a valid hex \
+         flag with \"0x\" prefix"
     );
 
     #[cfg(not(feature = "alloc"))]
     assert_eq!(
         Flags::from_str("first").err().unwrap().to_string(),
-        "unrecognized named flag or hex flag, \
-         expected \"\", or a \"|\"-separated set of \
-         \"second\", \"fourth\", \"fifth\", \"seventh\", or a valid hex flag"
+        "unrecognized named flag or hex flag, expected \"\", or a \"|\"-separated set of \
+         \"second\", \"fourth\", \"fifth\", \"seventh\", or a valid hex flag with \"0x\" prefix"
     );
 }
 
@@ -679,7 +646,7 @@ fn test_flag_names_overflow() {
     type Flags = BitFlags<u8, FlagsTag>;
 
     impl BitFlagsSpec<u8> for FlagsTag {
-        const VALID_BITS: u8 = 0b1111_1111;
+        const VALID_BITS_MASK: u8 = 0b1111_1111;
         const FLAG_NAMES: &[&[&str]] = &[
             &["first"],
             &["second"],
@@ -692,7 +659,7 @@ fn test_flag_names_overflow() {
             &["ninth"],
             &["tenth"],
         ];
-        const IS_DEFAULT_PARSING_ASCII_CASE_SENSITIVE: bool = false;
+        const DEFAULT_PARSER_MATCHER: ParserMatcher = ParserMatcher::Exact;
     }
 
     assert_eq!(Flags::from_str("eighth").unwrap().bits(), 0b1000_0000);
@@ -743,9 +710,9 @@ fn test_failing_partial_fmt() {
 
     const FMT_LEN: usize = 25;
     #[cfg(feature = "alloc")]
-    const NAMED_ERR_FMT_LEN: usize = 139;
+    const NAMED_ERR_FMT_LEN: usize = 156;
     #[cfg(not(feature = "alloc"))]
-    const NAMED_ERR_FMT_LEN: usize = 120;
+    const NAMED_ERR_FMT_LEN: usize = 137;
     #[cfg(feature = "alloc")]
     const UNNAMED_ERR_FMT_LEN: usize = 84;
     #[cfg(not(feature = "alloc"))]
@@ -759,13 +726,19 @@ fn test_failing_partial_fmt() {
 
     let error = Perms::from_str("readable").err().unwrap();
     for i in 0..NAMED_ERR_FMT_LEN {
-        assert!(write!(&mut SmallWriter(i), "{error}").is_err(), "{i}");
+        assert!(
+            write!(&mut SmallWriter(i), "{error}").is_err(),
+            "Unexpectedly succeed at {i}"
+        );
     }
     assert!(write!(&mut SmallWriter(NAMED_ERR_FMT_LEN), "{error}").is_ok());
 
     let error = UnnamedPerms::from_str("readable").err().unwrap();
     for i in 0..UNNAMED_ERR_FMT_LEN {
-        assert!(write!(&mut SmallWriter(i), "{error}").is_err(), "{i}");
+        assert!(
+            write!(&mut SmallWriter(i), "{error}").is_err(),
+            "Unexpectedly succeed at {i}"
+        );
     }
     assert!(write!(&mut SmallWriter(UNNAMED_ERR_FMT_LEN), "{error}").is_ok());
 }
@@ -781,8 +754,8 @@ fn test_arbitrary() {
     assert_eq!(
         <[Perms; 4]>::arbitrary(&mut u).unwrap(),
         [
-            READ,
-            WRITE,
+            READ.into(),
+            WRITE.into(),
             READ | EXEC,
             WRITE | Perms::from_bits_retain(0b1000),
         ]
@@ -812,8 +785,8 @@ fn test_bytemuck() {
     assert_eq!(raw, bits);
 
     let flags = [
-        READ,
-        WRITE,
+        READ.into(),
+        WRITE.into(),
         READ | EXEC,
         WRITE | Perms::from_bits_retain(0b1000),
     ];
@@ -842,8 +815,7 @@ fn test_serde_unnamed() {
     #[cfg(feature = "alloc")]
     assert_de_tokens_error::<UnnamedPerms>(
         &[Token::Str("5")],
-        "unrecognized hex flag, \
-         given: \"5\", expected a valid hex flag with \"0x\" prefix",
+        "unrecognized hex flag, given: \"5\", expected a valid hex flag with \"0x\" prefix",
     );
     #[cfg(not(feature = "alloc"))]
     assert_de_tokens_error::<UnnamedPerms>(&[Token::Str("5")], ERROR_CORE);
@@ -851,8 +823,7 @@ fn test_serde_unnamed() {
     #[cfg(feature = "alloc")]
     assert_de_tokens_error::<UnnamedPerms>(
         &[Token::Str("red")],
-        "unrecognized hex flag, \
-         given: \"red\", expected a valid hex flag with \"0x\" prefix",
+        "unrecognized hex flag, given: \"red\", expected a valid hex flag with \"0x\" prefix",
     );
     #[cfg(not(feature = "alloc"))]
     assert_de_tokens_error::<UnnamedPerms>(&[Token::Str("red")], ERROR_CORE);
@@ -860,8 +831,7 @@ fn test_serde_unnamed() {
     #[cfg(feature = "alloc")]
     assert_de_tokens_error::<UnnamedPerms>(
         &[Token::Str("0xCOFFEE")],
-        "unrecognized hex flag, \
-         given: \"0xCOFFEE\", expected a valid hex flag with \"0x\" prefix",
+        "unrecognized hex flag, given: \"0xCOFFEE\", expected a valid hex flag with \"0x\" prefix",
     );
     #[cfg(not(feature = "alloc"))]
     assert_de_tokens_error::<UnnamedPerms>(&[Token::Str("0xCOFFEE")], ERROR_CORE);
@@ -878,9 +848,9 @@ fn test_serde_named() {
     use serde_test::{Token, assert_de_tokens, assert_de_tokens_error, assert_tokens};
 
     #[cfg(not(feature = "alloc"))]
-    const ERROR_CORE: &str = "unrecognized named flag or hex flag, \
-                              expected \"\", or a \"|\"-separated set of \
-                              \"read\", \"write\", \"exec\", or a valid hex flag";
+    const ERROR_CORE: &str = "unrecognized named flag or hex flag, expected \"\", or a \
+                              \"|\"-separated set of \"read\", \"write\", \"exec\", or a valid \
+                              hex flag";
 
     assert_tokens(&(READ | EXEC), &[Token::Str("read | exec")]);
     assert_de_tokens(&(READ | EXEC), &[Token::Str("  read  |execute          ")]);
@@ -895,9 +865,8 @@ fn test_serde_named() {
     #[cfg(feature = "alloc")]
     assert_de_tokens_error::<Perms>(
         &[Token::Str("5")],
-        "unrecognized named flag or hex flag, \
-         given: \"5\", expected \"\", or a \"|\"-separated set of \
-         \"read\", \"write\", \"exec\", or a valid hex flag",
+        "unrecognized named flag or hex flag, given: \"5\", expected \"\", or a \"|\"-separated \
+         set of \"read\", \"write\", \"exec\", or a valid hex flag",
     );
     #[cfg(not(feature = "alloc"))]
     assert_de_tokens_error::<Perms>(&[Token::Str("5")], ERROR_CORE);
@@ -905,9 +874,8 @@ fn test_serde_named() {
     #[cfg(feature = "alloc")]
     assert_de_tokens_error::<Perms>(
         &[Token::Str("red")],
-        "unrecognized named flag or hex flag, \
-         given: \"red\", expected \"\", or a \"|\"-separated set of \
-         \"read\", \"write\", \"exec\", or a valid hex flag",
+        "unrecognized named flag or hex flag, given: \"red\", expected \"\", or a \"|\"-separated \
+         set of \"read\", \"write\", \"exec\", or a valid hex flag",
     );
     #[cfg(not(feature = "alloc"))]
     assert_de_tokens_error::<Perms>(&[Token::Str("red")], ERROR_CORE);
@@ -915,16 +883,15 @@ fn test_serde_named() {
     #[cfg(feature = "alloc")]
     assert_de_tokens_error::<Perms>(
         &[Token::Str("0xCOFFEE")],
-        "unrecognized named flag or hex flag, \
-         given: \"0xCOFFEE\", expected \"\", or a \"|\"-separated set of \
-         \"read\", \"write\", \"exec\", or a valid hex flag",
+        "unrecognized named flag or hex flag, given: \"0xCOFFEE\", expected \"\", or a \
+         \"|\"-separated set of \"read\", \"write\", \"exec\", or a valid hex flag",
     );
     #[cfg(not(feature = "alloc"))]
     assert_de_tokens_error::<Perms>(&[Token::Str("0xCOFFEE")], ERROR_CORE);
 
     assert_de_tokens_error::<Perms>(
         &[Token::I32(123)],
-        "invalid type: integer `123`, expected \"\", or a \"|\"-separated set of \
-         \"read\", \"write\", \"exec\", or a valid hex flag",
+        "invalid type: integer `123`, expected \"\", or a \"|\"-separated set of \"read\", \
+         \"write\", \"exec\", or a valid hex flag",
     );
 }
