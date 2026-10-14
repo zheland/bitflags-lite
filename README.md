@@ -17,7 +17,7 @@ The `bitflags-lite` crate provides a lightweight, macro-free, generic bitflags
 implementation for Rust.
 
 `bitflags-lite` provides `BitFlags<T, U>`, a `#[repr(transparent)]` wrapper
-around an unsigned integer `T` that adds a compile-time tag type `U`.
+around an integer `T` that adds a compile-time tag type `U`.
 The tag type distinguishes flag sets that share the same storage type and
 defines which bits are valid through the `BitFlagsSpec` trait.
 
