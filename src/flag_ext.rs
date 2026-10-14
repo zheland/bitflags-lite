@@ -112,12 +112,15 @@ where
         T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
+        let max_bits = const {
+            size_of::<T>()
+                .checked_mul(8)
+                .expect("unexpectedly large `T`")
+        };
+
         let bits = T::ONE.checked_shl(u32::from(i))?;
-        if (bits & !U::VALID_BITS_MASK) == T::ZERO {
-            Self::try_from_bit_retain(i)
-        } else {
-            None
-        }
+        ((bits & !U::VALID_BITS_MASK) == T::ZERO && usize::from(i) < max_bits)
+            .then(|| Self::from_bit_retain(i))
     }
 
     #[inline]
@@ -148,7 +151,7 @@ where
             && let Some(bit) = bits.lowest_one()
             && let Ok(bit) = u8::try_from(bit)
         {
-            Self::try_from_bit_retain(bit)
+            Some(Self::from_bit_retain(bit))
         } else {
             None
         }

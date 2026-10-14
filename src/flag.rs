@@ -1,5 +1,4 @@
 use core::any::type_name;
-use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -30,27 +29,15 @@ impl<T, U> BitFlag<T, U>
 where
     U: ?Sized,
 {
-    /// Creates a bit flag for bit index `i` if `i` is less than the number of
-    /// bits in `T`.
+    /// Creates a bit flag for bit index `i`.
     ///
     /// The index is not checked against [`BitFlagsSpec::VALID_BITS_MASK`] or
     /// against [`BitFlagsSpec::FLAG_NAMES`].
     /// Use [`BitFlag::try_from_bit`] when validation is required.
     #[inline]
     #[must_use]
-    pub const fn try_from_bit_retain(i: u8) -> Option<Self> {
-        let max_bits = const {
-            size_of::<T>()
-                .checked_mul(8)
-                .expect("unexpectedly large `T`")
-        };
-
-        #[expect(clippy::as_conversions, reason = "supported in const functions")]
-        if (i as usize) < max_bits {
-            Some(Self(i, PhantomData, PhantomData))
-        } else {
-            None
-        }
+    pub const fn from_bit_retain(i: u8) -> Self {
+        Self(i, PhantomData, PhantomData)
     }
 
     /// Returns the zero-based bit index stored in this flag.
@@ -197,13 +184,19 @@ where
         T: util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
-        for (i, variants) in U::FLAG_NAMES.iter().enumerate() {
-            let Ok(i) = u8::try_from(i) else {
-                break;
-            };
-            let Some(bit_flag) = Self::try_from_bit_retain(i) else {
-                break;
-            };
+        let max_bits = const {
+            size_of::<T>()
+                .checked_mul(8)
+                .expect("unexpectedly large `T`")
+        };
+
+        for (i, variants) in U::FLAG_NAMES.iter().enumerate().take(max_bits.min(8)) {
+            #[expect(
+                clippy::as_conversions,
+                clippy::cast_possible_truncation,
+                reason = "`i` never exceeds 8"
+            )]
+            let bit_flag = Self::from_bit_retain(i as u8);
             for &expected in *variants {
                 let is_matched = name_matcher.matches(input, expected);
                 if is_matched {
@@ -253,6 +246,12 @@ where
     where
         T: util::IntOpsExt,
     {
+        let max_bits = const {
+            size_of::<T>()
+                .checked_mul(8)
+                .expect("unexpectedly large `T`")
+        };
+
         let input = input.strip_prefix("0x")?;
         if input.starts_with('+') {
             return None;
@@ -264,7 +263,7 @@ where
         }
         let bit = bits.lowest_one()?;
         let bit = u8::try_from(bit).ok()?;
-        Self::try_from_bit_retain(bit)
+        (usize::from(bit) < max_bits).then(|| Self::from_bit_retain(bit))
     }
 }
 
@@ -343,7 +342,7 @@ macro_rules! impl_bit_flag {
                         clippy::cast_possible_truncation,
                         reason = "supported in const functions"
                     )]
-                    Self::try_from_bit_retain(bit as u8)
+                    Some(Self::from_bit_retain(bit as u8))
                 } else {
                     None
                 }

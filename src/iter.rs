@@ -99,7 +99,7 @@ where
             clippy::cast_possible_truncation,
             reason = "types longer than 256 bits are not supported"
         )]
-        BitFlag::try_from_bit_retain(lowest as u8)
+        Some(BitFlag::from_bit_retain(lowest as u8))
     }
 
     #[expect(clippy::as_conversions, reason = "T::count_ones never exceeds `usize`")]
@@ -140,7 +140,7 @@ where
             clippy::cast_possible_truncation,
             reason = "types longer than 256 bits are not supported"
         )]
-        BitFlag::try_from_bit_retain(lowest as u8)
+        Some(BitFlag::from_bit_retain(lowest as u8))
     }
 }
 
