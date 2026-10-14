@@ -16,7 +16,7 @@ use crate::{BitFlags, BitFlagsSpec, NameMatcher, util};
 /// It is primarily returned by [`BitFlagsIter`] and can be combined with other
 /// flags or converted into a [`BitFlags`] set.
 #[repr(transparent)]
-pub struct BitFlag<T, U>(u8, PhantomData<T>, PhantomData<fn() -> *const U>)
+pub struct BitFlag<T, U>(u8, PhantomData<fn() -> T>, PhantomData<fn() -> *const U>)
 where
     U: ?Sized;
 
