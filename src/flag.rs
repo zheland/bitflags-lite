@@ -348,6 +348,16 @@ macro_rules! impl_bit_flag {
                 }
             }
 
+            #[inline]
+            #[must_use]
+            pub const fn is_valid(&self) -> bool
+            where
+                U: BitFlagsSpec<$ty>,
+            {
+                #[expect(clippy::as_conversions, reason = "supported in const functions")]
+                ((self.0 as u32) < <$ty>::BITS && BitFlags::<$ty, U>::from_flag(*self).is_valid())
+            }
+
             /// Returns the intersection of `self` and `other`.
             ///
             /// This is a raw-bit operation.

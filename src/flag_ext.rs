@@ -48,6 +48,12 @@ where
     where
         T: util::IntOpsExt;
 
+    #[must_use]
+    fn is_valid(&self) -> bool
+    where
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>;
+
     /// Returns the intersection of `self` and `other`.
     ///
     /// This is a raw-bit operation.
@@ -119,7 +125,7 @@ where
         };
 
         let bits = T::ONE.checked_shl(u32::from(i))?;
-        ((bits & !U::VALID_BITS_MASK) == T::ZERO && usize::from(i) < max_bits)
+        (usize::from(i) < max_bits && (bits & !U::VALID_BITS_MASK) == T::ZERO)
             .then(|| Self::from_bit_retain(i))
     }
 
@@ -155,6 +161,22 @@ where
         } else {
             None
         }
+    }
+
+    #[inline]
+    fn is_valid(&self) -> bool
+    where
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>,
+    {
+        let max_bits = const {
+            size_of::<T>()
+                .checked_mul(8)
+                .expect("unexpectedly large `T`")
+        };
+
+        #[expect(clippy::as_conversions, reason = "supported in const functions")]
+        (usize::from(self.bit()) < max_bits && BitFlags::<T, U>::from_flag(*self).is_valid())
     }
 
     #[inline]
