@@ -14,6 +14,20 @@ use crate::{BitFlags, BitFlagsSpec, NameMatcher, util};
 /// tag type `U` as the corresponding [`BitFlags<T, U>`].
 /// It is primarily returned by [`BitFlagsIter`] and can be combined with other
 /// flags or converted into a [`BitFlags`] set.
+///
+/// # Formatting
+///
+/// [`Display`](fmt::Display) writes the flag's name if one is defined in
+/// [`BitFlagsSpec::FLAG_NAMES`], and its mask (`1 << bit`) in lowercase
+/// hexadecimal with a `0x` prefix otherwise.
+/// The mask is computed from the bit index regardless of whether the index is
+/// in range for `T`.
+///
+/// [`Debug`](fmt::Debug) writes the bit index and the type parameters.
+///
+/// [`Binary`](fmt::Binary), [`Octal`](fmt::Octal),
+/// [`LowerHex`](fmt::LowerHex), and [`UpperHex`](fmt::UpperHex) write the
+/// mask in the corresponding numeric base.
 #[repr(transparent)]
 pub struct BitFlag<T, U>(u8, PhantomData<fn() -> T>, PhantomData<fn() -> *const U>)
 where
@@ -31,9 +45,13 @@ where
 {
     /// Creates a bit flag for bit index `i`.
     ///
-    /// The index is not checked against [`BitFlagsSpec::VALID_BITS_MASK`] or
-    /// against [`BitFlagsSpec::FLAG_NAMES`].
-    /// Use [`BitFlag::try_from_bit`] when validation is required.
+    /// The index is not checked against the number of bits in `T`, against
+    /// [`BitFlagsSpec::VALID_BITS_MASK`], or against
+    /// [`BitFlagsSpec::FLAG_NAMES`].
+    /// A `BitFlag` created with this method may refer to a bit that is out of
+    /// range for `T` or invalid for the tag.
+    /// Use [`BitFlag::try_from_bit`] or [`BitFlag::is_valid`] when validation
+    /// is required.
     #[inline]
     #[must_use]
     pub const fn from_bit_retain(i: u8) -> Self {
@@ -190,7 +208,7 @@ where
                 .expect("unexpectedly large `T`")
         };
 
-        for (i, variants) in U::FLAG_NAMES.iter().enumerate().take(max_bits.min(8)) {
+        for (i, variants) in U::FLAG_NAMES.iter().enumerate().take(max_bits.min(256)) {
             #[expect(
                 clippy::as_conversions,
                 clippy::cast_possible_truncation,
@@ -348,6 +366,13 @@ macro_rules! impl_bit_flag {
                 }
             }
 
+            /// Returns `true` if this flag refers to a valid bit.
+            ///
+            /// A flag is valid when its bit index is within the width of `T` and the
+            /// corresponding bit is present in [`BitFlagsSpec::VALID_BITS_MASK`].
+            ///
+            /// [`BitFlag::from_bit_retain`] does not validate the bit index, so a
+            /// `BitFlag` constructed through it may be invalid.
             #[inline]
             #[must_use]
             pub const fn is_valid(&self) -> bool
@@ -543,6 +568,11 @@ where
     }
 }
 
+/// Formats this flag as its name if one is defined for its bit, or as its
+/// mask (`1 << bit`) in lowercase hexadecimal with a `0x` prefix otherwise.
+///
+/// The mask is computed from the bit index regardless of whether the index
+/// is in range for `T`. See [`BitFlag::is_valid`].
 impl<T, U> fmt::Display for BitFlag<T, U>
 where
     U: ?Sized + BitFlagsSpec<T>,
@@ -562,6 +592,9 @@ where
     }
 }
 
+/// Formats this flag's bit index and type parameters.
+///
+/// Use [`Display`](fmt::Display) to format the flag's mask or name instead.
 impl<T, U> fmt::Debug for BitFlag<T, U>
 where
     U: ?Sized,
@@ -578,6 +611,7 @@ where
     }
 }
 
+/// Formats this flag's mask (`1 << bit`) in binary.
 impl<T, U> fmt::Binary for BitFlag<T, U>
 where
     U: ?Sized,
@@ -592,6 +626,7 @@ where
     }
 }
 
+/// Formats this flag's mask (`1 << bit`) in octal.
 impl<T, U> fmt::Octal for BitFlag<T, U>
 where
     U: ?Sized,
@@ -608,6 +643,7 @@ where
     }
 }
 
+/// Formats this flag's mask (`1 << bit`) in lowercase hexadecimal.
 impl<T, U> fmt::LowerHex for BitFlag<T, U>
 where
     U: ?Sized,
@@ -624,6 +660,7 @@ where
     }
 }
 
+/// Formats this flag's mask (`1 << bit`) in uppercase hexadecimal.
 impl<T, U> fmt::UpperHex for BitFlag<T, U>
 where
     U: ?Sized,

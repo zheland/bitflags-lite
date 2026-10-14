@@ -75,6 +75,16 @@ where
     where
         T: Copy + PartialEq + util::IntOpsExt;
 
+    /// Returns `true` if all set bits in `self` are valid for this tag.
+    ///
+    /// A `BitFlags` value can contain bits not present in
+    /// [`BitFlagsSpec::VALID_BITS_MASK`] after construction with
+    /// [`BitFlags::from_bits_retain`] or after raw-bit operations such as
+    /// [`BitFlags::insert`], [`BitFlags::toggle`], and [`BitFlags::union`].
+    /// This method returns `false` for such values.
+    ///
+    /// Use [`BitFlags::truncate`] or [`BitFlags::from_bits_truncate`] to
+    /// restrict a value to its valid bits.
     #[must_use]
     fn is_valid(&self) -> bool
     where

@@ -48,6 +48,13 @@ where
     where
         T: util::IntOpsExt;
 
+    /// Returns `true` if this flag refers to a valid bit.
+    ///
+    /// A flag is valid when its bit index is within the width of `T` and the
+    /// corresponding bit is present in [`BitFlagsSpec::VALID_BITS_MASK`].
+    ///
+    /// [`BitFlag::from_bit_retain`] does not validate the bit index, so a
+    /// `BitFlag` constructed through it may be invalid.
     #[must_use]
     fn is_valid(&self) -> bool
     where
@@ -175,8 +182,7 @@ where
                 .expect("unexpectedly large `T`")
         };
 
-        #[expect(clippy::as_conversions, reason = "supported in const functions")]
-        (usize::from(self.bit()) < max_bits && BitFlags::<T, U>::from_flag(*self).is_valid())
+        usize::from(self.bit()) < max_bits && BitFlags::<T, U>::from_flag(*self).is_valid()
     }
 
     #[inline]
