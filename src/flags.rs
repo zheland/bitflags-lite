@@ -200,19 +200,14 @@ where
         parser_matcher: NameMatcher,
     ) -> Result<Self, BitFlagsParseError>
     where
-        T: Default
-            + Not<Output = T>
-            + BitAndAssign<T>
-            + BitOrAssign<T>
-            + Shl<usize, Output = T>
-            + util::IntOpsExt,
+        T: BitOrAssign<T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         if input.trim().is_empty() {
-            return Ok(Self::default());
+            return Ok(Self::empty());
         }
 
-        let mut this = Self::default();
+        let mut this = Self::empty();
         let input = input.split(separator);
         for input in input {
             let input = input.trim();
@@ -1018,13 +1013,7 @@ where
 
 impl<T, U> FromStr for BitFlags<T, U>
 where
-    T: Default
-        + Not<Output = T>
-        + BitAndAssign<T>
-        + BitOrAssign<T>
-        + Shl<usize, Output = T>
-        + FromStr
-        + util::IntOpsExt,
+    T: BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Err = BitFlagsParseError;
@@ -1183,13 +1172,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de, T, U> serde::Deserialize<'de> for BitFlags<T, U>
 where
-    T: Default
-        + Not<Output = T>
-        + BitAndAssign<T>
-        + BitOrAssign<T>
-        + Shl<usize, Output = T>
-        + FromStr
-        + util::IntOpsExt,
+    T: BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
@@ -1205,13 +1188,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<T, U> serde::de::Visitor<'_> for BitFlagsVisitor<T, U>
 where
-    T: Default
-        + Not<Output = T>
-        + BitAndAssign<T>
-        + BitOrAssign<T>
-        + Shl<usize, Output = T>
-        + FromStr
-        + util::IntOpsExt,
+    T: BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Value = BitFlags<T, U>;
