@@ -1076,7 +1076,7 @@ where
 
 impl<T, U> FromIterator<Self> for BitFlags<T, U>
 where
-    T: Default + BitOrAssign<T>,
+    T: Default + BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -1084,7 +1084,7 @@ where
     where
         I: IntoIterator<Item = Self>,
     {
-        let mut this = Self(T::default(), PhantomData);
+        let mut this = Self(T::ZERO, PhantomData);
         for other in iter {
             this.0 |= other.0;
         }
@@ -1102,7 +1102,7 @@ where
     where
         I: IntoIterator<Item = BitFlag<T, U>>,
     {
-        let mut this = Self(T::default(), PhantomData);
+        let mut this = Self(T::ZERO, PhantomData);
         for other in iter {
             this |= Self::from(other);
         }
