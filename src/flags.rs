@@ -931,12 +931,10 @@ where
         let mut separator = "";
         let mut this = self.0;
         for (i, names) in U::FLAG_NAMES.iter().enumerate() {
-            #[expect(
-                clippy::as_conversions,
-                clippy::cast_possible_truncation,
-                reason = "would break from the loop before truncation"
-            )]
-            let Some(mask) = T::ONE.checked_shl(i as u32) else {
+            let Some(i) = u32::try_from(i).ok() else {
+                break; // Extremely exotic type.
+            };
+            let Some(mask) = T::ONE.checked_shl(i) else {
                 break;
             };
             if let Some(name) = names.first() {
