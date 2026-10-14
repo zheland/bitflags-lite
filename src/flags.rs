@@ -278,7 +278,12 @@ macro_rules! impl_bit_flags {
             #[must_use]
             pub const fn from_bit_retain(bit: u8) -> Self {
                 #[expect(clippy::as_conversions, reason = "supported in const functions")]
-                Self::from_bits_retain(1 << bit as u32)
+                let bit = bit as u32;
+                if bit < <$ty>::BITS {
+                    Self::from_bits_retain(1 << bit)
+                } else {
+                    Self::empty()
+                }
             }
 
             /// Creates a flag set from bit index `bit` if that bit is valid.
@@ -293,7 +298,12 @@ macro_rules! impl_bit_flags {
                 U: BitFlagsSpec<$ty>,
             {
                 #[expect(clippy::as_conversions, reason = "supported in const functions")]
-                Self::try_from_bits(1 << bit as u32)
+                let bit = bit as u32;
+                if bit < <$ty>::BITS {
+                    Self::try_from_bits(1 << bit)
+                } else {
+                    None
+                }
             }
 
             /// Creates a flag set from raw bits if all set bits are valid.
