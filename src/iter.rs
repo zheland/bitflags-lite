@@ -78,7 +78,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         const {
             assert!(
-                size_of::<T>() < 32,
+                size_of::<T>() <= 32,
                 "types longer than 256 bits are not supported"
             );
         }
@@ -119,7 +119,7 @@ where
     fn next_back(&mut self) -> Option<Self::Item> {
         const {
             assert!(
-                size_of::<T>() < 32,
+                size_of::<T>() <= 32,
                 "types longer than 256 bits are not supported"
             );
         }
