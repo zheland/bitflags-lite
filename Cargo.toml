@@ -13,6 +13,7 @@ keywords = [ "bit", "bitmask", "bitflags", "flags" ]
 categories = [ "no-std", "no-std::no-alloc" ]
 
 [features]
+default = [ "alloc", "std" ]
 alloc = []
 std = [ "alloc" ]
 arbitrary = [ "dep:arbitrary" ]

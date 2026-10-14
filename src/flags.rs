@@ -187,20 +187,17 @@ where
     /// [`BitFlagsSpec::VALID_BITS_MASK`].
     /// The returned value may contain invalid bits.
     ///
-    /// Returns [`BitFlagsParseError`] if a part is not a recognized named flag
-    /// or a valid hexadecimal flag.
-    ///
     /// Note that if `separator` is an empty string, the method would split into
     /// individual characters, which is almost certainly not intended.
     ///
     /// # Errors
     ///
-    /// Returns [`BitFlagsParseError`] if an `input` is not recognized as a
-    /// `separator`-separated list of named flags or hexadecimal flags.
+    /// Returns [`BitFlagsParseError`] if `input` is not a `separator`-separated
+    /// list of named flags or hexadecimal flags.
     #[inline]
     pub fn try_from_str(
         input: &str,
-        separator: &str,
+        separator: &'static str,
         name_matcher: NameMatcher,
     ) -> Result<Self, BitFlagsParseError>
     where
@@ -239,7 +236,11 @@ where
             #[cfg(not(feature = "alloc"))]
             let given = ();
             let expected = U::FLAG_NAMES;
-            return Err(BitFlagsParseError { given, expected });
+            return Err(BitFlagsParseError {
+                given,
+                separator,
+                expected,
+            });
         }
 
         Ok(this)
@@ -257,8 +258,12 @@ macro_rules! impl_bit_flags {
         {
             /// Creates a flag set from a single [`BitFlag`].
             ///
-            /// This retains the bit index from `bit_flag` without validating it
-            /// against the width of `T` or [`BitFlagsSpec::VALID_BITS_MASK`].
+            /// The bit index is not validated against
+            /// [`BitFlagsSpec::VALID_BITS_MASK`].
+            /// The resulting value may contain an invalid bit.
+            ///
+            /// If the flag's index is outside the width of `T`, the result is
+            /// [`BitFlags::empty`].
             #[inline]
             #[must_use]
             pub const fn from_flag(flag: BitFlag<$ty, U>) -> Self {
@@ -273,6 +278,9 @@ macro_rules! impl_bit_flags {
             /// Use [`BitFlags::try_from_bit`] or
             /// [`BitFlags::from_bits_truncate`] when validation or truncation
             /// is required.
+            ///
+            /// If `bit` is outside the width of `T`, the result is
+            /// [`BitFlags::empty`].
             #[inline]
             #[must_use]
             pub const fn from_bit_retain(bit: u8) -> Self {
@@ -951,7 +959,7 @@ where
         let mut this = self.0;
         for (i, names) in U::FLAG_NAMES.iter().enumerate() {
             let Some(i) = u32::try_from(i).ok() else {
-                break; // Extremely exotic type.
+                break; // `FLAG_NAMES` with more than `u32::MAX` entries.
             };
             let Some(mask) = T::ONE.checked_shl(i) else {
                 break;
@@ -1093,7 +1101,7 @@ where
 
 impl<T, U> FromIterator<Self> for BitFlags<T, U>
 where
-    T: Default + BitOrAssign<T> + util::IntOpsExt,
+    T: BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -1111,7 +1119,7 @@ where
 
 impl<T, U> FromIterator<BitFlag<T, U>> for BitFlags<T, U>
 where
-    T: Default + BitOrAssign<T> + util::IntOpsExt,
+    T: BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
@@ -1215,7 +1223,7 @@ where
     type Value = BitFlags<T, U>;
 
     fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_expected(f, U::FLAG_NAMES)
+        fmt_expected(f, "|", U::FLAG_NAMES)
     }
 
     #[inline]
@@ -1242,6 +1250,7 @@ pub struct BitFlagsParseError {
     #[cfg(feature = "alloc")]
     given: alloc::string::String,
 
+    separator: &'static str,
     expected: &'static [&'static [&'static str]],
 }
 
@@ -1263,7 +1272,7 @@ impl fmt::Display for BitFlagsParseError {
         write!(f, "given: \"{}\", expected ", self.given)?;
         #[cfg(not(feature = "alloc"))]
         write!(f, "expected ")?;
-        fmt_expected(f, self.expected)?;
+        fmt_expected(f, self.separator, self.expected)?;
 
         #[cfg(not(feature = "alloc"))]
         let () = self.given;
@@ -1279,6 +1288,7 @@ impl core::error::Error for BitFlagsParseError {}
 #[inline]
 fn fmt_expected(
     f: &mut fmt::Formatter<'_>,
+    separator: &'static str,
     expected: &'static [&'static [&'static str]],
 ) -> fmt::Result {
     let named_flags = expected
@@ -1289,7 +1299,7 @@ fn fmt_expected(
     if named_flags == 0 {
         write!(f, "a valid hex flag with \"0x\" prefix")?;
     } else {
-        write!(f, "\"\", or a \"|\"-separated set of")?;
+        write!(f, "\"\", or a \"{separator}\"-separated set of")?;
 
         let mut separator = " ";
         for names in expected {

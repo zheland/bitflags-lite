@@ -208,13 +208,11 @@ where
                 .expect("unexpectedly large `T`")
         };
 
-        for (i, variants) in U::FLAG_NAMES.iter().enumerate().take(max_bits.min(256)) {
-            #[expect(
-                clippy::as_conversions,
-                clippy::cast_possible_truncation,
-                reason = "`i` never exceeds 8"
-            )]
-            let bit_flag = Self::from_bit_retain(i as u8);
+        for (i, variants) in U::FLAG_NAMES.iter().enumerate().take(max_bits) {
+            let Ok(bit) = u8::try_from(i) else {
+                break; // `T` wider than 256 bits.
+            };
+            let bit_flag = Self::from_bit_retain(bit);
             for &expected in *variants {
                 let is_matched = name_matcher.matches(input, expected);
                 if is_matched {

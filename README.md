@@ -16,24 +16,48 @@ TODO: Enable badges after publishing to crates.io.
 The `bitflags-lite` crate provides a lightweight, macro-free, generic bitflags
 implementation for Rust.
 
-`bitflags-lite` provides `BitFlags<T, U>`, a `#[repr(transparent)]` wrapper
-around an integer `T` that adds a compile-time tag type `U`.
-The tag type distinguishes flag sets that share the same storage type and
-defines which bits are valid through the `BitFlagsSpec` trait.
+[`BitFlags<T, U>`] is a `#[repr(transparent)]` wrapper around an integer `T`
+that adds a compile-time tag type `U`.
+The tag distinguishes flag sets that share the same storage type and describes
+which bits are valid through the [`BitFlagsSpec`] trait.
 
-It is designed to be simple, predictable, and const-friendly.
+It is `no_std` and `no_alloc` compatible, and const-friendly.
 
 
-## When to choose `bitflags`, `enumflags2`, and `bitflags-lite`
+## Why a generic `BitFlags<T, U>`?
 
-Choose
-- [`bitflags`] if you want the ecosystem-standard macro, multi-bit convenience
-flags, unnamed wildcard flags, and the widest feature set.
-- [`enumflags2`] if you want a single-flag type distinct from the set type,
-  enum-variant-driven definitions, and match/iter over variants.
-- [`bitflags-lite`] if you want lightweight flags definition with no macros and
-  a reusable generic BitFlags<T, U> and comfortable with per-bit naming model,
-  and you don't need combined/multi-bit flags
+Macro-based bitflags crates generate a distinct struct for every flag set.
+Each invocation re-expands the full method set, and the resulting types share
+no common trait or type with one another.
+By contrast, `bitflags-lite` defines [`BitFlags<T, U>`] once and asks you to
+specialize it through a plain trait implementation.
+
+That design has a few concrete consequences:
+
+- **Generic code over flag sets.** Because every flag set is the same type
+  family, you can write `fn f<T, U: BitFlagsSpec<T>>(flags: BitFlags<T, U>)`.
+  This is not possible with macro-generated structs.
+- **Predictable expansion.** A new flag set adds a small trait impl, not a
+  fresh copy of the entire API.
+- **Inspectable source.** The spec is ordinary Rust. `rustdoc` renders it,
+  `rust-analyzer` navigates it, `grep` finds it.
+
+But you have to give up automatic derivation of flag names and valid bits
+and write [`BitFlagsSpec::VALID_BITS_MASK`] and [`BitFlagsSpec::FLAG_NAMES`] by
+hand and keep them in sync with your constants.
+
+
+## When to choose `bitflags`, `enumflags2`, or `bitflags-lite`
+
+- Choose [`bitflags`] if you want the mature and battle-tested crate, the
+  ecosystem-standard macro, multi-bit convenience flags, and unnamed wildcard
+  flags.
+- Choose [`enumflags2`] if you want a single-flag type distinct from the set
+  type, enum-variant-driven definitions, and match/iter over variants.
+- Choose [`bitflags-lite`] if you want a lightweight flags definition with no
+  macros and a reusable generic [`BitFlags<T, U>`], are comfortable with a
+  per-bit naming model, and you don't need combined or multi-bit flags.
+
 
 ## Usage
 
@@ -52,7 +76,7 @@ bitflags-lite = { version = "0.1.0-dev.0", features = [ "serde", "bytemuck" ] }
 
 ## Example
 
-Define a tag type and implement `BitFlagsSpec` for it:
+Define a tag type and implement [`BitFlagsSpec`] for it:
 
 ```rust
 use bitflags_lite::{BitFlags, BitFlagsSpec, NameMatcher};
@@ -68,7 +92,7 @@ impl BitFlagsSpec<u32> for PermissionsTag {
 
 type Permissions = BitFlags<u32, PermissionsTag>;
 
-// Compile-time const unwrapping is fine.
+// Constructors are `const` for concrete integer types.
 const READ: Permissions = Permissions::try_from_bit(0).unwrap();
 const WRITE: Permissions = Permissions::try_from_bit(1).unwrap();
 const EXEC: Permissions = Permissions::try_from_bit(2).unwrap();
@@ -84,8 +108,55 @@ fn main() {
 }
 ```
 
-You can also define constants through a trait or an inherent implementation if
-you prefer.
+Constants can also be defined through an inherent implementation, a trait, or
+an associated `const` on the tag type — whatever fits your code style.
+
+The tag type keeps flag sets distinct even when they share a storage type,
+providing type-safety across otherwise-similar types:
+
+The following would not compile
+```rust,compile_fail
+use bitflags_lite::{BitFlags, BitFlagsSpec, NameMatcher};
+
+struct PermsTag;
+type Perms = BitFlags<u8, PermsTag>;
+impl BitFlagsSpec<u8> for PermsTag {
+    const VALID_BITS_MASK: u8 = (1 << 3) - 1;
+    const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+    const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::AsciiCaseInsensitive;
+}
+
+struct KeyboardModifiersTag;
+type KeyboardModifiers = BitFlags<u8, KeyboardModifiersTag>;
+impl BitFlagsSpec<u8> for KeyboardModifiersTag {
+    const VALID_BITS_MASK: u8 = (1 << 4) - 1;
+    const FLAG_NAMES: &[&[&str]] = &[&["Shift"], &["Ctrl"], &["Alt"], &["Meta"]];
+    const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::AsciiCaseInsensitive;
+}
+
+let rwx: Perms = Perms::try_from_bits(0b111).unwrap();
+let keyboard_modifiers: KeyboardModifiers = rwx;
+//                                          ^^^
+// error[E0308]: mismatched types
+// expected struct `BitFlags<_, KeyboardModifiersTag>`
+//    found struct `BitFlags<_, test::PermsTag>`
+```
+
+
+## Design Highlights
+
+- **Single-flag vs. set distinction.** [`BitFlag<T, U>`] represents one bit
+  index. [`BitFlags<T, U>`] represents a set. They convert into each other and
+  interoperate through the usual operators.
+- **Invalid bits are representable.** A [`BitFlags`] value may contain bits not
+  set in [`BitFlagsSpec::VALID_BITS_MASK`]; they are preserved by raw-bit
+  operations and cleared by [`BitFlags::truncate`], [`BitFlags::complement`],
+  and [`Not`](core::ops::Not). Use [`BitFlags::is_valid`] to check.
+- **Const-friendly.** Every constructor, accessor, and combinator on the
+  concrete integer types is a `const fn`. The generic equivalents live in the
+  [`BitFlagsExt`] and [`BitFlagExt`] extension traits.
+- **No allocation.** Parsing and formatting work without `alloc`. The
+  `alloc` feature only enriches error messages with the offending input.
 
 
 ## Comparison with Existing Crates
@@ -126,13 +197,17 @@ you prefer.
 
 ## Feature flags
 
+
+- `alloc` (implied by `std`, enabled by default): enriches parse errors with the
+  offending input.
+- `std` (enabled by default): enables `alloc` feature.
 - `arbitrary`: implements `Arbitrary` for `BitFlag<T, U>` and
   `BitFlags<T, U>`.
 - `serde`: implements `serde::Serialize` and `serde::Deserialize` for
-  `BitFlag<T, U>` and `BitFlags<T, U>`, serializing to and deserializing from
-  flag strings.
+  `BitFlag<T, U>` and `BitFlags<T, U>` round-tripping through flag strings.
 - `bytemuck`: implements `Zeroable` and `Pod` for `BitFlag<T, U>` and
   `BitFlags<T, U>`, allowing them to be used in plain-old-data contexts.
+
 
 ## License
 
@@ -155,3 +230,9 @@ additional terms or conditions.
 [`bitflags`]: https://crates.io/crates/bitflags
 [`enumflags2`]: https://crates.io/crates/enumflags2
 [`bitflags-lite`]: https://crates.io/crates/bitflags-lite
+[`BitFlag<T, U>`]: https://docs.rs/bitflags-lite/latest/bitflags_lite/struct.BitFlag.html
+[`BitFlags<T, U>`]: https://docs.rs/bitflags-lite/latest/bitflags_lite/struct.BitFlags.html
+[`BitFlags`]: https://docs.rs/bitflags-lite/latest/bitflags_lite/struct.BitFlags.html
+[`BitFlagExt`]: https://docs.rs/bitflags-lite/latest/bitflags_lite/trait.BitFlagExt.html
+[`BitFlagsExt`]: https://docs.rs/bitflags-lite/latest/bitflags_lite/trait.BitFlagsExt.html
+[`BitFlagsSpec`]: https://docs.rs/bitflags-lite/latest/bitflags_lite/trait.BitFlagsSpec.html

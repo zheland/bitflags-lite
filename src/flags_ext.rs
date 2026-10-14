@@ -14,8 +14,12 @@ where
 {
     /// Creates a flag set from a single [`BitFlag`].
     ///
-    /// This retains the bit index from `bit_flag` without validating it against
-    /// the width of `T` or [`BitFlagsSpec::VALID_BITS_MASK`].
+    /// The bit index is not validated against
+    /// [`BitFlagsSpec::VALID_BITS_MASK`].
+    /// The resulting value may contain an invalid bit.
+    ///
+    /// If the flag's index is outside the width of `T`, the result is
+    /// [`BitFlags::empty`].
     #[must_use]
     fn from_flag(bit_flag: BitFlag<T, U>) -> Self
     where
@@ -28,6 +32,9 @@ where
     /// The resulting value may contain an invalid bit. Use
     /// [`BitFlags::try_from_bit`] or [`BitFlags::from_bits_truncate`] when
     /// validation or truncation is required.
+    ///
+    /// If `bit` is outside the width of `T`, the result is
+    /// [`BitFlags::empty`].
     #[must_use]
     fn from_bit_retain(bit: u8) -> Self
     where
@@ -225,9 +232,7 @@ where
     where
         T: util::IntOpsExt,
     {
-        T::ONE
-            .checked_shl(u32::from(bit))
-            .map_or_else(Self::empty, Self::from_bits_retain)
+        Self::from(BitFlag::from_bit_retain(bit))
     }
 
     #[inline]
