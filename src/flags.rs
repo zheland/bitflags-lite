@@ -190,6 +190,9 @@ where
     /// Returns [`BitFlagsParseError`] if a part is not a recognized named flag
     /// or a valid hexadecimal flag.
     ///
+    /// Note that is `separator` is an empty string, the method would split into
+    /// individual characters, which is almost certainly not intended.
+    ///
     /// # Errors
     ///
     /// Returns [`BitFlagsParseError`] if an `input` is not recognized as a
