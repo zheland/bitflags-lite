@@ -482,26 +482,6 @@ where
     }
 }
 
-impl<T, U> AsRef<u8> for BitFlag<T, U>
-where
-    U: ?Sized,
-{
-    #[inline]
-    fn as_ref(&self) -> &u8 {
-        &self.0
-    }
-}
-
-impl<T, U> Borrow<u8> for BitFlag<T, U>
-where
-    U: ?Sized,
-{
-    #[inline]
-    fn borrow(&self) -> &u8 {
-        &self.0
-    }
-}
-
 impl<T, U> BitAnd<Self> for BitFlag<T, U>
 where
     T: BitAnd<T, Output = T> + util::IntOpsExt,
