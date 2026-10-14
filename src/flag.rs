@@ -772,7 +772,6 @@ impl fmt::Display for BitFlagParseError {
     }
 }
 
-#[cfg(feature = "alloc")]
 impl core::error::Error for BitFlagParseError {}
 
 /// Writes the expected flag format for [`BitFlagParseError`] and serde
@@ -841,7 +840,6 @@ impl fmt::Display for BitFlagParseNameError {
     }
 }
 
-#[cfg(feature = "alloc")]
 impl core::error::Error for BitFlagParseNameError {}
 
 /// Writes the expected named-flag format.
@@ -894,5 +892,4 @@ impl fmt::Display for BitFlagParseHexError {
     }
 }
 
-#[cfg(feature = "alloc")]
 impl core::error::Error for BitFlagParseHexError {}

@@ -1251,7 +1251,6 @@ impl fmt::Display for BitFlagsParseError {
     }
 }
 
-#[cfg(feature = "alloc")]
 impl core::error::Error for BitFlagsParseError {}
 
 /// Writes the expected flag format for [`BitFlagsParseError`] and serde
