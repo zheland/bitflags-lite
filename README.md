@@ -50,14 +50,14 @@ by hand and keep them in sync with your constants.
 
 ```toml
 [dependencies]
-bitflags-lite = "0.1.0-dev.0"
+bitflags-lite = "0.1.0"
 ```
 
 With optional features:
 
 ```toml
 [dependencies]
-bitflags-lite = { version = "0.1.0-dev.0", features = [ "serde", "bytemuck" ] }
+bitflags-lite = { version = "0.1.0", features = [ "serde", "bytemuck" ] }
 ```
 
 
