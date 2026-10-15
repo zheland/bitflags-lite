@@ -137,19 +137,19 @@ libdoc="$( cat src/lib.rs | normalize_docs "lib.rs" )"
 echo_and_run git diff <(echo "$readme") <(echo "$libdoc")
 
 params_sets=(
-    'stable,stable,"",""'
-    'beta,beta,"",""'
-    'nightly,nightly,"",""'
-    '1.97.0,1.97.0,"",""'
-    'stable release,stable,"","--release"'
-    'nightly release,nightly,"","--release"'
-    'no_std x86_64,stable,x86_64-unknown-none,""'
-    'no_std thumbv7em,stable,thumbv7em-none-eabihf,""'
+    'stable,stable,,'
+    'beta,beta,,'
+    'nightly,nightly,,'
+    '1.97.0,1.97.0,,'
+    'stable release,stable,,"--release"'
+    'nightly release,nightly,,"--release"'
+    'no_std x86_64,stable,x86_64-unknown-none,'
+    'no_std thumbv7em,stable,thumbv7em-none-eabihf,'
 );
 
 
 for params in "${params_sets[@]}"; do
-    IFS=: read -r name toolchain target flags <<< "$params"
+    IFS=, read -r name toolchain target flags <<< "$params"
     if [[ $target == "" ]]; then
         echo_and_run cargo hack test --all-targets --feature-powerset $flags
         echo_and_run cargo test --all-targets --all-features $flags
@@ -158,11 +158,11 @@ for params in "${params_sets[@]}"; do
         echo_and_run cargo hack check --lib \
             --target $target \
             --feature-powerset \
-            --exclude-features std
+            --exclude-features "default,arbitrary,std"
     fi
 done
 
-echo_and_run hack cargo +nightly miri test --all-targets --feature-powerset
+echo_and_run cargo +nightly miri test --all-targets --all-features
 
 echo_and_run cargo deny --workspace --all-features check
 
@@ -170,5 +170,8 @@ echo_and_run cargo +nightly llvm-cov --doctests --all-features --html \
     --fail-under-functions 99 \
     --fail-under-lines 95 \
     --fail-under-regions 95
+
+echo_and_run env RUSTDOCFLAGS="-D rustdoc::broken_intra_doc_links" \
+    cargo +nightly doc --all-features
 
 ok "All checks succeeded." 1>&2
