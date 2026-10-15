@@ -96,12 +96,12 @@ type Permissions = BitFlags<u32, PermissionsTag>;
 const READ: Permission = Permission::try_from_bit(0).unwrap();
 const WRITE: Permission = Permission::try_from_bit(1).unwrap();
 const EXEC: Permission = Permission::try_from_bit(2).unwrap();
+const RWX: Permissions = Permissions::try_from_bits(0b111).unwrap();
 
-let rwx = READ | WRITE | EXEC;
-assert!(rwx.contains(READ.into()));
-assert!(rwx.contains(WRITE.into()));
-assert!(rwx.contains(EXEC.into()));
-assert!(rwx.contains(READ | WRITE));
+assert!(RWX.contains(READ.into()));
+assert!(RWX.contains(WRITE.into()));
+assert!(RWX.contains(EXEC.into()));
+assert!(RWX.contains(READ | WRITE));
 
 let read_exec = READ | EXEC;
 assert!(!read_exec.contains(WRITE.into()));
