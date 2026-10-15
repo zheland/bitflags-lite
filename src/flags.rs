@@ -152,6 +152,17 @@ where
         self.0
     }
 
+    /// Returns a mutable reference to the raw bits stored in this flag set.
+    ///
+    /// Mutating the returned value can introduce invalid bits.
+    /// Use [`BitFlags::truncate`] afterwards if the value must contain only
+    /// valid bits.
+    #[inline]
+    #[must_use]
+    pub const fn bits_mut(&mut self) -> &mut T {
+        &mut self.0
+    }
+
     /// Consumes this flag set and returns the raw bits.
     ///
     /// This is the consuming counterpart to [`BitFlags::bits`].
@@ -164,17 +175,6 @@ where
     #[must_use]
     pub fn into_bits(self) -> T {
         self.0
-    }
-
-    /// Returns a mutable reference to the raw bits stored in this flag set.
-    ///
-    /// Mutating the returned value can introduce invalid bits.
-    /// Use [`BitFlags::truncate`] afterwards if the value must contain only
-    /// valid bits.
-    #[inline]
-    #[must_use]
-    pub const fn bits_mut(&mut self) -> &mut T {
-        &mut self.0
     }
 
     /// Returns an iterator over the individual set bits in this flag set.
@@ -303,6 +303,34 @@ macro_rules! impl_bit_flags {
                 let bit = bit as u32;
                 if bit < <$ty>::BITS {
                     Self::from_bits_retain(1 << bit)
+                } else {
+                    Self::empty()
+                }
+            }
+
+            /// Creates a flag set with only the bit at index `bit` set,
+            /// clearing the bit if it is not valid for the tag.
+            ///
+            /// This is the bit-index counterpart to
+            /// [`BitFlags::from_bits_truncate`].
+            /// If `bit` is outside the width of `T`, or if the corresponding
+            /// bit is not present in [`BitFlagsSpec::VALID_BITS_MASK`], the
+            /// result is [`BitFlags::empty`].
+            ///
+            /// The result always contains either exactly one bit or no bits.
+            ///
+            /// Use [`BitFlags::try_from_bit`] when the caller needs to
+            /// distinguish a valid index from an invalid one.
+            #[inline]
+            #[must_use]
+            pub const fn from_bit_truncate(bit: u8) -> Self
+            where
+                U: BitFlagsSpec<$ty>,
+            {
+                #[expect(clippy::as_conversions, reason = "supported in const functions")]
+                let bit = bit as u32;
+                if bit < <$ty>::BITS {
+                    Self::from_bits_truncate(1 << bit)
                 } else {
                     Self::empty()
                 }
@@ -932,6 +960,19 @@ where
     }
 }
 
+impl<T, U> Sub<BitFlags<T, U>> for BitFlag<T, U>
+where
+    T: Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+    U: ?Sized,
+{
+    type Output = BitFlags<T, U>;
+
+    #[inline]
+    fn sub(self, rhs: BitFlags<T, U>) -> Self::Output {
+        BitFlags::from(self).sub(rhs)
+    }
+}
+
 impl<T, U> SubAssign<Self> for BitFlags<T, U>
 where
     T: Not<Output = T> + BitAndAssign<T>,
@@ -1093,6 +1134,24 @@ where
 }
 
 impl<T, U> IntoIterator for &BitFlags<T, U>
+where
+    T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
+    U: ?Sized,
+{
+    type IntoIter = BitFlagsIter<T, U>;
+    type Item = BitFlag<T, U>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        BitFlagsIter::new(*self)
+    }
+}
+
+#[expect(
+    clippy::into_iter_without_iter,
+    reason = "`iter` and `iter_mut` are the same"
+)]
+impl<T, U> IntoIterator for &mut BitFlags<T, U>
 where
     T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
     U: ?Sized,

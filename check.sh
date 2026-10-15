@@ -14,11 +14,11 @@ echo_and_run() { echo "$ ${*@Q}"; "$@"; }
 echo_and_run cargo +nightly fmt --all -- --check
 echo_and_run cargo outdated --exit-code 1
 
-for features in "--no-default-features" "" "--all-features"; do
-    echo_and_run cargo clippy --workspace --all-targets $features -- -D warnings
-    echo_and_run cargo build --workspace --all-targets
-    echo_and_run cargo test --workspace --all-targets
-    echo_and_run cargo test --workspace --doc
+for flags in "--no-default-features" "" "--all-features"; do
+    echo_and_run cargo clippy --workspace --all-targets $flags -- -D warnings
+    echo_and_run cargo build --workspace --all-targets $flags
+    echo_and_run cargo test --workspace --all-targets $flags
+    echo_and_run cargo test --workspace --doc $flags
 done
 
 echo_and_run cargo deny --workspace --all-features check

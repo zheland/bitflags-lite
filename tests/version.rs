@@ -1,5 +1,5 @@
 #![allow(missing_docs, reason = "okay in tests")]
-#![expect(unused_crate_dependencies, reason = "okay in tests")]
+#![allow(unused_crate_dependencies, reason = "okay in tests")]
 #![cfg(not(miri))]
 #![cfg(not(target_arch = "wasm32"))]
 

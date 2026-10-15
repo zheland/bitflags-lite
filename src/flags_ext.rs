@@ -40,6 +40,24 @@ where
     where
         T: util::IntOpsExt;
 
+    /// Creates a flag set with only the bit at index `bit` set, clearing the
+    /// bit if it is not valid for the tag.
+    ///
+    /// This is the bit-index counterpart to [`BitFlags::from_bits_truncate`].
+    /// If `bit` is outside the width of `T`, or if the corresponding bit is
+    /// not present in [`BitFlagsSpec::VALID_BITS_MASK`], the result is
+    /// [`BitFlags::empty`].
+    ///
+    /// The result always contains either exactly one bit or no bits.
+    ///
+    /// Use [`BitFlags::try_from_bit`] when the caller needs to distinguish a
+    /// valid index from an invalid one.
+    #[must_use]
+    fn from_bit_truncate(bit: u8) -> Self
+    where
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>;
+
     /// Creates a flag set from bit index `bit` if that bit is valid.
     ///
     /// Returns `None` if `bit` is outside the width of `T` or if the resulting
@@ -242,6 +260,15 @@ where
         T: util::IntOpsExt,
     {
         Self::from(BitFlag::from_bit_retain(bit))
+    }
+
+    #[inline]
+    fn from_bit_truncate(bit: u8) -> Self
+    where
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>,
+    {
+        Self::try_from_bit(bit).unwrap_or(Self::empty())
     }
 
     #[inline]

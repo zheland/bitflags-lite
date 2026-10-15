@@ -12,6 +12,21 @@ pub trait BitFlagExt<T, U>: Sized
 where
     U: ?Sized,
 {
+    /// Creates a bit flag from a [`BitFlags`] set.
+    ///
+    /// Returns `Some` if `flags` contains exactly one set bit and that bit is
+    /// valid according to [`BitFlagsSpec::VALID_BITS_MASK`].
+    ///
+    /// Returns `None` if `flags` is empty, has more than one bit set, or the
+    /// single set bit is not valid.
+    ///
+    /// This is equivalent to [`BitFlag::try_from_bits`] on `flags.bits()`.
+    #[must_use]
+    fn try_from_flags(flags: BitFlags<T, U>) -> Option<Self>
+    where
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>;
+
     /// Creates a validated bit flag for bit index `i`.
     ///
     /// Returns `None` if `i` is not set in
@@ -35,21 +50,6 @@ where
     fn try_from_bits(bits: T) -> Option<Self>
     where
         T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
-        U: BitFlagsSpec<T>;
-
-    /// Creates a bit flag from a [`BitFlags`] set.
-    ///
-    /// Returns `Some` if `flags` contains exactly one set bit and that bit is
-    /// valid according to [`BitFlagsSpec::VALID_BITS_MASK`].
-    ///
-    /// Returns `None` if `flags` is empty, has more than one bit set, or the
-    /// single set bit is not valid.
-    ///
-    /// This is equivalent to [`BitFlag::try_from_bits`] on `flags.bits()`.
-    #[must_use]
-    fn try_from_flags(flags: BitFlags<T, U>) -> Option<Self>
-    where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Creates a single-bit flag from `bits` if exactly one bit is set.
@@ -146,20 +146,22 @@ where
     U: ?Sized,
 {
     #[inline]
+    fn try_from_flags(flags: BitFlags<T, U>) -> Option<Self>
+    where
+        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        U: BitFlagsSpec<T>,
+    {
+        Self::try_from_bits(flags.bits())
+    }
+
+    #[inline]
     fn try_from_bit(i: u8) -> Option<Self>
     where
         T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
-        let max_bits = const {
-            size_of::<T>()
-                .checked_mul(8)
-                .expect("unexpectedly large `T`")
-        };
-
         let bits = T::ONE.checked_shl(u32::from(i))?;
-        (usize::from(i) < max_bits && (bits & !U::VALID_BITS_MASK) == T::ZERO)
-            .then(|| Self::from_bit_retain(i))
+        ((i < T::BITS) && (bits & !U::VALID_BITS_MASK) == T::ZERO).then(|| Self::from_bit_retain(i))
     }
 
     #[inline]
@@ -176,15 +178,6 @@ where
         } else {
             None
         }
-    }
-
-    #[inline]
-    fn try_from_flags(flags: BitFlags<T, U>) -> Option<Self>
-    where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
-        U: BitFlagsSpec<T>,
-    {
-        Self::try_from_bits(flags.bits())
     }
 
     #[inline]
@@ -208,13 +201,7 @@ where
         T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
-        let max_bits = const {
-            size_of::<T>()
-                .checked_mul(8)
-                .expect("unexpectedly large `T`")
-        };
-
-        usize::from(self.bit()) < max_bits && BitFlags::<T, U>::from_flag(*self).is_valid()
+        (self.bit() < T::BITS) && BitFlags::<T, U>::from_flag(*self).is_valid()
     }
 
     #[inline]

@@ -122,7 +122,7 @@ assert_eq!(
     ]
 );
 
-let formatted: Vec<String> = flags.iter().map(|flag| format!("{flag}")).collect();
+let formatted: Vec<String> = flags.iter().map(ToString::to_string).collect();
 assert_eq!(formatted, ["read", "write", "0x8", "0x10"]);
 
 let named_only: Vec<&'static str> = flags.iter().filter_map(BitFlag::name).collect();

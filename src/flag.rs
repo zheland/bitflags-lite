@@ -202,15 +202,12 @@ where
         T: util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
-        let max_bits = const {
-            size_of::<T>()
-                .checked_mul(8)
-                .expect("unexpectedly large `T`")
-        };
-
-        for (i, variants) in U::FLAG_NAMES.iter().enumerate().take(max_bits) {
+        for (i, variants) in U::FLAG_NAMES.iter().enumerate().take(usize::from(T::BITS)) {
             let Ok(bit) = u8::try_from(i) else {
-                break; // `T` wider than 256 bits.
+                #[cfg(debug_assertions)]
+                unreachable!("`i < T::BITS <= u8::MAX`, so this is unreachable");
+                #[cfg(not(debug_assertions))]
+                break;
             };
             let bit_flag = Self::from_bit_retain(bit);
             for &expected in *variants {
@@ -262,12 +259,6 @@ where
     where
         T: util::IntOpsExt,
     {
-        let max_bits = const {
-            size_of::<T>()
-                .checked_mul(8)
-                .expect("unexpectedly large `T`")
-        };
-
         let input = input.strip_prefix("0x")?;
         if input.starts_with('+') {
             return None;
@@ -279,7 +270,7 @@ where
         }
         let bit = bits.lowest_one()?;
         let bit = u8::try_from(bit).ok()?;
-        (usize::from(bit) < max_bits).then(|| Self::from_bit_retain(bit))
+        (bit < T::BITS).then(|| Self::from_bit_retain(bit))
     }
 }
 
@@ -292,6 +283,25 @@ macro_rules! impl_bit_flag {
         where
             U: ?Sized,
         {
+            /// Creates a bit flag from a [`BitFlags`] set.
+            ///
+            /// Returns `Some` if `flags` contains exactly one set bit and that
+            /// bit is valid according to [`BitFlagsSpec::VALID_BITS_MASK`].
+            ///
+            /// Returns `None` if `flags` is empty, has more than one bit set,
+            /// or the single set bit is not valid.
+            ///
+            /// This is equivalent to [`BitFlag::try_from_bits`] on
+            /// `flags.bits()`.
+            #[inline]
+            #[must_use]
+            pub const fn try_from_flags(flags: BitFlags<$ty, U>) -> Option<Self>
+            where
+                U: BitFlagsSpec<$ty>,
+            {
+                Self::try_from_bits(flags.bits())
+            }
+
             /// Creates a validated bit flag for bit index `i`.
             ///
             /// Returns `None` if `i` is not set in
@@ -339,25 +349,6 @@ macro_rules! impl_bit_flag {
                 } else {
                     None
                 }
-            }
-
-            /// Creates a bit flag from a [`BitFlags`] set.
-            ///
-            /// Returns `Some` if `flags` contains exactly one set bit and that
-            /// bit is valid according to [`BitFlagsSpec::VALID_BITS_MASK`].
-            ///
-            /// Returns `None` if `flags` is empty, has more than one bit set,
-            /// or the single set bit is not valid.
-            ///
-            /// This is equivalent to [`BitFlag::try_from_bits`] on
-            /// `flags.bits()`.
-            #[inline]
-            #[must_use]
-            pub const fn try_from_flags(flags: BitFlags<$ty, U>) -> Option<Self>
-            where
-                U: BitFlagsSpec<$ty>,
-            {
-                Self::try_from_bits(flags.bits())
             }
 
             /// Creates a single-bit flag from `bits` if exactly one bit is set.
@@ -665,7 +656,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "BitFlag(1 << {}, PhantomData<{}>, PhantomData<{}>)",
+            "BitFlag(1 << {}, PhantomData<({}, {})>)",
             self.0,
             type_name::<T>(),
             type_name::<U>(),
@@ -869,7 +860,7 @@ impl fmt::Display for BitFlagParseError {
         if named_flags == 0 {
             write!(f, "unrecognized hex flag, ")?;
         } else {
-            write!(f, "unrecognized named flag, ")?;
+            write!(f, "unrecognized named flag or hex flag, ")?;
         }
         #[cfg(feature = "alloc")]
         write!(f, "given: \"{}\", expected ", self.given)?;
@@ -899,10 +890,10 @@ fn fmt_expected(
         .count();
 
     if named_flags == 0 {
-        write!(f, "a valid hex flag with \"0x\" prefix")?;
+        write!(f, "a valid one-bit hex flag with \"0x\" prefix")?;
     } else {
         fmt_expected_name(f, expected)?;
-        write!(f, ", or a valid hex flag with \"0x\" prefix")?;
+        write!(f, ", or a valid one-bit hex flag with \"0x\" prefix")?;
     }
     Ok(())
 }
@@ -995,7 +986,7 @@ impl fmt::Display for BitFlagParseHexError {
 
         #[cfg(feature = "alloc")]
         write!(f, ", given: \"{}\"", self.given)?;
-        write!(f, ", expected a valid hex flag with \"0x\" prefix")?;
+        write!(f, ", expected a valid one-bit hex flag with \"0x\" prefix")?;
 
         #[cfg(not(feature = "alloc"))]
         let () = self.given;

@@ -10,12 +10,30 @@ use core::num::ParseIntError;
 ///
 /// It abstracts over the concrete integer types so that generic code can use
 /// the same operations.
+///
+/// # Bit width limit
+///
+/// Bit indices are stored as `u8`, so implementations must report a
+/// [`BITS`](Self::BITS) value of at most `u8::MAX`.
+/// This library therefore supports storage types of up to 256 bits.
+/// All primitive integers satisfy this constraint.
 pub trait IntOpsExt: Sized {
     /// The value `0`.
     const ZERO: Self;
 
     /// The value `1`.
     const ONE: Self;
+
+    /// The number of bits in this integer type.
+    ///
+    /// For primitive integers this equals `size_of::<Self>() * 8`, but
+    /// [`IntOpsExt`] implementations must return the number of bits the type
+    /// can represent as a bit set, which may be smaller for wrapper types.
+    ///
+    /// This value is used to bound valid bit indices for
+    /// [`BitFlag`](crate::BitFlag) and [`BitFlags`](crate::BitFlags).
+    /// It must not exceed `u8::MAX`, because bit indices are stored as `u8`.
+    const BITS: u8;
 
     /// Checked shift left.
     /// Computes `self << rhs`, returning `None` if `rhs` is larger than or
@@ -57,6 +75,13 @@ macro_rules! impl_uint_opt_ext {
         impl IntOpsExt for $ty {
             const ZERO: Self = 0;
             const ONE: Self = 1;
+
+            #[expect(
+                clippy::as_conversions,
+                clippy::cast_possible_truncation,
+                reason = "supported in const context"
+            )]
+            const BITS: u8 = <$ty>::BITS as u8;
 
             #[inline]
             fn checked_shl(&self, rhs: u32) -> Option<Self> {

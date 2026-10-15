@@ -1,34 +1,25 @@
-//! Simple example-like tests.
+//! Tests for `flags.rs` and `flag.rs` files.
 
 #![expect(clippy::unwrap_used, reason = "okay in tests")]
-#![expect(unused_crate_dependencies, reason = "okay in tests")]
+#![allow(unused_crate_dependencies, reason = "okay in tests")]
 
 use core::cmp::Ordering;
 use core::fmt::{self, Write};
+use core::hash::{Hash, Hasher};
 use core::str::FromStr;
+use std::collections::HashSet;
+use std::hash::DefaultHasher;
 
 use bitflags_lite::{BitFlag, BitFlags, BitFlagsIter, BitFlagsSpec, NameMatcher};
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
 struct PermsTag;
-
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
-struct UnnamedPermsTag;
-
 type Perm = BitFlag<u8, PermsTag>;
 type Perms = BitFlags<u8, PermsTag>;
-type UnnamedPerm = BitFlag<u8, UnnamedPermsTag>;
-type UnnamedPerms = BitFlags<u8, UnnamedPermsTag>;
 
 impl BitFlagsSpec<u8> for PermsTag {
     const VALID_BITS_MASK: u8 = (1 << 3) - 1;
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-    const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
-}
-
-impl BitFlagsSpec<u8> for UnnamedPermsTag {
-    const VALID_BITS_MASK: u8 = (1 << 3) - 1;
-    const FLAG_NAMES: &[&[&str]] = &[];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 }
 
@@ -37,12 +28,23 @@ const READ: Perm = Perm::try_from_bit(0).unwrap();
 const WRITE: Perm = Perm::try_from_bit(1).unwrap();
 const EXEC: Perm = Perm::try_from_bit(2).unwrap();
 
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
+struct UnnamedPermsTag;
+type UnnamedPerm = BitFlag<u8, UnnamedPermsTag>;
+type UnnamedPerms = BitFlags<u8, UnnamedPermsTag>;
+
+impl BitFlagsSpec<u8> for UnnamedPermsTag {
+    const VALID_BITS_MASK: u8 = (1 << 3) - 1;
+    const FLAG_NAMES: &[&[&str]] = &[];
+    const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
+}
+
 const U_READ: UnnamedPerm = UnnamedPerm::try_from_bit(0).unwrap();
 const U_WRITE: UnnamedPerm = UnnamedPerm::try_from_bit(1).unwrap();
 const U_EXEC: UnnamedPerm = UnnamedPerm::try_from_bit(2).unwrap();
 
 #[test]
-fn test_empty() {
+fn test_flags_empty() {
     let flags = Perms::empty();
     assert!(flags.is_empty());
     assert_eq!(flags.bits(), 0);
@@ -50,7 +52,7 @@ fn test_empty() {
 }
 
 #[test]
-fn test_all_valid() {
+fn test_flags_all_valid() {
     let flags = Perms::all_valid();
     assert!(!flags.is_empty());
     assert_eq!(flags.bits(), 0b111);
@@ -58,7 +60,31 @@ fn test_all_valid() {
 }
 
 #[test]
-fn test_from_bits() {
+fn test_flags_into_bits() {
+    for bits in 0..=255 {
+        assert_eq!(Perms::from_bits_retain(bits).into_bits(), bits);
+    }
+}
+
+#[test]
+fn test_flags_from() {
+    let rwx = READ | WRITE | EXEC;
+    assert_eq!(u8::from(rwx), 0b111);
+
+    let rx = READ | EXEC;
+    assert_eq!(u8::from(rx), 0b101);
+
+    let flags = Perms::from_bits_retain(0b1111_1111);
+    assert_eq!(u8::from(flags), 0b1111_1111);
+
+    for bit in 0..=255 {
+        let flag = Perm::from_bit_retain(bit);
+        assert_eq!(Perms::from_flag(flag), Perms::from(flag));
+    }
+}
+
+#[test]
+fn test_flags_try_from() {
     assert_eq!(Perms::try_from_bits(0b1), Some(READ.into()));
     assert_eq!(Perms::try_from_bits(0b10), Some(WRITE.into()));
     assert_eq!(Perms::try_from_bits(0b11), Some(READ | WRITE));
@@ -69,10 +95,20 @@ fn test_from_bits() {
     assert_eq!(Perms::try_from_bits(0b1100), None);
     assert_eq!(Perms::try_from_bits(0b1110), None);
     assert_eq!(Perms::try_from_bits(0b1111), None);
+
+    assert_eq!(Perms::try_from_bit(0), Some(READ.into()));
+    assert_eq!(Perms::try_from_bit(1), Some(WRITE.into()));
+    assert_eq!(Perms::try_from_bit(2), Some(EXEC.into()));
+    assert_eq!(Perms::try_from_bit(3), None);
+    assert_eq!(Perms::try_from_bit(4), None);
+    assert_eq!(Perms::try_from_bit(5), None);
+    assert_eq!(Perms::try_from_bit(6), None);
+    assert_eq!(Perms::try_from_bit(7), None);
+    assert_eq!(Perms::try_from_bit(8), None);
 }
 
 #[test]
-fn test_from_truncate() {
+fn test_flags_from_truncate() {
     assert_eq!(Perms::from_bits_truncate(0b1), READ);
     assert_eq!(Perms::from_bits_truncate(0b10), WRITE);
     assert_eq!(Perms::from_bits_truncate(0b11), READ | WRITE);
@@ -83,10 +119,20 @@ fn test_from_truncate() {
     assert_eq!(Perms::from_bits_truncate(0b1100), EXEC);
     assert_eq!(Perms::from_bits_truncate(0b1110), WRITE | EXEC);
     assert_eq!(Perms::from_bits_truncate(0b1111), READ | WRITE | EXEC);
+
+    assert_eq!(Perms::from_bit_truncate(0), READ);
+    assert_eq!(Perms::from_bit_truncate(1), WRITE);
+    assert_eq!(Perms::from_bit_truncate(2), EXEC);
+    assert_eq!(Perms::from_bit_truncate(3), Perms::empty());
+    assert_eq!(Perms::from_bit_truncate(4), Perms::empty());
+    assert_eq!(Perms::from_bit_truncate(5), Perms::empty());
+    assert_eq!(Perms::from_bit_truncate(6), Perms::empty());
+    assert_eq!(Perms::from_bit_truncate(7), Perms::empty());
+    assert_eq!(Perms::from_bit_truncate(8), Perms::empty());
 }
 
 #[test]
-fn test_from_retain() {
+fn test_flags_from_retain() {
     assert_eq!(Perms::try_from_bits(0b1000), None);
     let bit4 = Perms::from_bits_retain(0b1000);
     assert_eq!(bit4.bits(), 0b1000);
@@ -101,10 +147,54 @@ fn test_from_retain() {
     assert_eq!(Perms::from_bits_retain(0b1100), EXEC | bit4);
     assert_eq!(Perms::from_bits_retain(0b1110), WRITE | EXEC | bit4);
     assert_eq!(Perms::from_bits_retain(0b1111), READ | WRITE | EXEC | bit4);
+
+    assert_eq!(Perms::from_bit_retain(0), READ);
+    assert_eq!(Perms::from_bit_retain(1), WRITE);
+    assert_eq!(Perms::from_bit_retain(2), EXEC);
+    assert_eq!(Perms::from_bit_retain(3), Perms::from_bits_retain(0x08));
+    assert_eq!(Perms::from_bit_retain(4), Perms::from_bits_retain(0x10));
+    assert_eq!(Perms::from_bit_retain(5), Perms::from_bits_retain(0x20));
+    assert_eq!(Perms::from_bit_retain(6), Perms::from_bits_retain(0x40));
+    assert_eq!(Perms::from_bit_retain(7), Perms::from_bits_retain(0x80));
+    assert_eq!(Perms::from_bit_retain(8), Perms::empty());
 }
 
 #[test]
-fn test_truncate() {
+fn test_flags_predicates() {
+    assert!(Perms::from_bits_retain(0).is_empty());
+    for bits in 1..=0xFF {
+        assert!(!Perms::from_bits_retain(bits).is_empty());
+    }
+
+    for bits in 0..=0b111 {
+        assert!(Perms::from_bits_retain(bits).is_valid());
+    }
+    for bits in 0b1000..=0xFF {
+        assert!(!Perms::from_bits_retain(bits).is_valid());
+    }
+}
+
+#[test]
+fn test_flags_intersects() {
+    assert!(Perms::from(READ).intersects(READ.into()));
+    assert!(!Perms::from(READ).intersects(WRITE.into()));
+    assert!((READ | WRITE).intersects(READ | WRITE));
+    assert!((READ | WRITE).intersects(WRITE | EXEC));
+    assert!(!Perms::from(READ).intersects(WRITE | EXEC));
+}
+
+#[test]
+fn test_flags_contains() {
+    assert!(Perms::from(READ).contains(READ.into()));
+    assert!(!Perms::from(READ).contains(WRITE.into()));
+    assert!((READ | WRITE).contains(READ | WRITE));
+    assert!(!(READ | WRITE).contains(WRITE | EXEC));
+    assert!(!Perms::from(READ).contains(WRITE | EXEC));
+    assert!((READ | WRITE | EXEC).contains(WRITE | EXEC));
+}
+
+#[test]
+fn test_flags_truncate() {
     let mut flags = Perms::from_bits_retain(0b1111_1111);
     assert_eq!(
         flags,
@@ -120,59 +210,42 @@ fn test_truncate() {
 }
 
 #[test]
-fn test_intersects() {
-    assert!(Perms::from(READ).intersects(READ.into()));
-    assert!(!Perms::from(READ).intersects(WRITE.into()));
-    assert!((READ | WRITE).intersects(READ | WRITE));
-    assert!((READ | WRITE).intersects(WRITE | EXEC));
-    assert!(!Perms::from(READ).intersects(WRITE | EXEC));
+fn test_flags_insert_remove_toggle_set() {
+    let mut flags = NONE;
+
+    flags.insert(READ.into());
+    assert_eq!(flags, READ);
+    flags.insert(READ.into());
+    assert_eq!(flags, READ);
+    flags.remove(READ.into());
+    assert_eq!(flags, NONE);
+    flags.remove(READ.into());
+    assert_eq!(flags, NONE);
+    flags.toggle(READ.into());
+    assert_eq!(flags, READ);
+
+    flags.insert(WRITE.into());
+    assert_eq!(flags, READ | WRITE);
+    flags.remove(WRITE.into());
+    assert_eq!(flags, READ);
+    flags.toggle(WRITE.into());
+    assert_eq!(flags, READ | WRITE);
+    flags.toggle(READ.into());
+    assert_eq!(flags, WRITE);
+
+    flags.set(EXEC.into(), false);
+    assert_eq!(flags, WRITE);
+    flags.set(EXEC.into(), true);
+    assert_eq!(flags, WRITE | EXEC);
+
+    flags.toggle(READ | WRITE | EXEC);
+    assert_eq!(flags, READ);
+    flags.clear();
+    assert_eq!(flags, NONE);
 }
 
 #[test]
-fn test_contains() {
-    assert!(Perms::from(READ).contains(READ.into()));
-    assert!(!Perms::from(READ).contains(WRITE.into()));
-    assert!((READ | WRITE).contains(READ | WRITE));
-    assert!(!(READ | WRITE).contains(WRITE | EXEC));
-    assert!(!Perms::from(READ).contains(WRITE | EXEC));
-    assert!((READ | WRITE | EXEC).contains(WRITE | EXEC));
-}
-
-#[test]
-fn test_insert_remove_toggle_set() {
-    let mut perms = NONE;
-
-    perms.insert(READ.into());
-    assert_eq!(perms, READ);
-    perms.insert(READ.into());
-    assert_eq!(perms, READ);
-    perms.remove(READ.into());
-    assert_eq!(perms, NONE);
-    perms.remove(READ.into());
-    assert_eq!(perms, NONE);
-    perms.toggle(READ.into());
-    assert_eq!(perms, READ);
-
-    perms.insert(WRITE.into());
-    assert_eq!(perms, READ | WRITE);
-    perms.remove(WRITE.into());
-    assert_eq!(perms, READ);
-    perms.toggle(WRITE.into());
-    assert_eq!(perms, READ | WRITE);
-    perms.toggle(READ.into());
-    assert_eq!(perms, WRITE);
-
-    perms.set(EXEC.into(), false);
-    assert_eq!(perms, WRITE);
-    perms.set(EXEC.into(), true);
-    assert_eq!(perms, WRITE | EXEC);
-
-    perms.toggle(READ | WRITE | EXEC);
-    assert_eq!(perms, READ);
-}
-
-#[test]
-fn test_intersection() {
+fn test_flags_intersection() {
     assert_eq!(NONE.intersection(READ.into()), NONE);
     assert_eq!(Perms::from(READ).intersection(READ.into()), READ);
     assert_eq!(Perms::from(READ).intersection(WRITE.into()), NONE);
@@ -182,7 +255,7 @@ fn test_intersection() {
 }
 
 #[test]
-fn test_union() {
+fn test_flags_union() {
     assert_eq!(NONE.union(READ.into()), READ);
     assert_eq!(Perms::from(READ).union(READ.into()), READ);
     assert_eq!(Perms::from(READ).union(WRITE.into()), READ | WRITE);
@@ -192,7 +265,7 @@ fn test_union() {
 }
 
 #[test]
-fn test_difference() {
+fn test_flags_difference() {
     assert_eq!(NONE.difference(READ.into()), NONE);
     assert_eq!(Perms::from(READ).difference(READ.into()), NONE);
     assert_eq!(Perms::from(READ).difference(WRITE.into()), READ);
@@ -202,7 +275,7 @@ fn test_difference() {
 }
 
 #[test]
-fn test_symmetric_difference() {
+fn test_flags_symmetric_difference() {
     assert_eq!(NONE.symmetric_difference(READ.into()), READ);
     assert_eq!(Perms::from(READ).symmetric_difference(READ.into()), NONE);
     assert_eq!(
@@ -221,7 +294,7 @@ fn test_symmetric_difference() {
 }
 
 #[test]
-fn test_complement() {
+fn test_flags_complement() {
     assert_eq!(NONE.complement(), READ | WRITE | EXEC);
     assert_eq!(Perms::from(READ).complement(), WRITE | EXEC);
     assert_eq!(Perms::from(WRITE).complement(), READ | EXEC);
@@ -233,55 +306,7 @@ fn test_complement() {
 }
 
 #[test]
-fn test_from() {
-    let rwx = READ | WRITE | EXEC;
-    assert_eq!(u8::from(rwx), 0b111);
-
-    let rx = READ | EXEC;
-    assert_eq!(u8::from(rx), 0b101);
-
-    let flags = Perms::from_bits_retain(0b1111_1111);
-    assert_eq!(u8::from(flags), 0b1111_1111);
-}
-
-#[test]
-fn test_iterator() {
-    let rwx = READ | WRITE | EXEC;
-    assert_eq!(rwx.into_iter().len(), 3);
-    assert_eq!(rwx.into_iter().size_hint(), (3, Some(3)));
-    assert_eq!(rwx.into_iter().collect::<Vec<_>>(), vec![READ, WRITE, EXEC]);
-    assert_eq!(
-        rwx.into_iter().rev().collect::<Vec<_>>(),
-        vec![EXEC, WRITE, READ]
-    );
-
-    let rw = READ | WRITE;
-    assert_eq!(rw.iter().len(), 2);
-    assert_eq!(rw.iter().size_hint(), (2, Some(2)));
-    assert_eq!(rw.iter().collect::<Vec<_>>(), vec![READ, WRITE]);
-    assert_eq!(rw.iter().rev().collect::<Vec<_>>(), vec![WRITE, READ]);
-
-    let none = NONE;
-    assert_eq!(none.iter().len(), 0);
-    assert_eq!(none.iter().size_hint(), (0, Some(0)));
-    assert_eq!(none.iter().collect::<Vec<_>>(), vec![NONE; 0]);
-    assert_eq!(none.iter().rev().collect::<Vec<_>>(), vec![NONE; 0]);
-}
-
-#[test]
-fn test_extend() {
-    let mut rwx = NONE;
-    rwx.extend([READ, EXEC]);
-    assert_eq!(rwx.bits(), 0b101);
-    rwx.extend([
-        BitFlags::<u8, _>::from_bits_retain(0b1000),
-        BitFlags::<u8, _>::from_bits_retain(0b1000_0000),
-    ]);
-    assert_eq!(rwx.bits(), 0b1000_1101);
-}
-
-#[test]
-fn test_clone() {
+fn test_flags_clone() {
     let rwx = READ | WRITE | EXEC;
     #[expect(clippy::clone_on_copy, reason = "explicit clone test")]
     let rwx = rwx.clone();
@@ -296,12 +321,17 @@ fn test_clone() {
 }
 
 #[test]
-fn test_cmp() {
+fn test_flags_cmp() {
     assert_eq!((READ | WRITE) - WRITE, READ);
-    assert!(READ < WRITE);
-    assert!(WRITE < EXEC);
+    assert_eq!(READ, (READ | WRITE) - WRITE);
+    assert!(Perms::from(READ) < Perms::from(WRITE));
+    assert!(Perms::from(WRITE) < Perms::from(EXEC));
+    assert!(READ < Perms::from(WRITE));
+    assert!(Perms::from(READ) < WRITE);
 
-    assert_eq!(READ.cmp(&WRITE), Ordering::Less);
+    assert_eq!(Perms::from(READ).cmp(&Perms::from(WRITE)), Ordering::Less);
+    assert_eq!(Perms::from(READ).partial_cmp(&WRITE), Some(Ordering::Less));
+    assert_eq!(READ.partial_cmp(&Perms::from(WRITE)), Some(Ordering::Less));
 
     let mut set = [
         Perms::from_bits_retain(0b1000),
@@ -340,11 +370,7 @@ fn test_cmp() {
 }
 
 #[test]
-fn test_hash() {
-    use core::hash::{Hash, Hasher};
-    use std::collections::HashSet;
-    use std::hash::DefaultHasher;
-
+fn test_flags_hash() {
     fn hash<T: Hash>(value: &T) -> u64 {
         let mut hasher = DefaultHasher::new();
         value.hash(&mut hasher);
@@ -380,7 +406,7 @@ fn test_hash() {
 }
 
 #[test]
-fn test_default() {
+fn test_flags_default() {
     let flags = Perms::default();
     assert!(flags.is_empty());
     assert_eq!(flags.bits(), 0);
@@ -391,7 +417,7 @@ fn test_default() {
 }
 
 #[test]
-fn test_as_ref() {
+fn test_flags_as_ref() {
     use core::borrow::Borrow;
 
     let rwx = READ | WRITE | EXEC;
@@ -400,38 +426,133 @@ fn test_as_ref() {
 }
 
 #[test]
-fn test_ops() {
-    assert_eq!(!NONE, READ | WRITE | EXEC);
-    assert_eq!(!!NONE, NONE);
-    assert_eq!(!READ, WRITE | EXEC);
-    assert_eq!(!READ & !WRITE, EXEC);
+fn test_flags_bit_ops() {
+    let rwx = READ | WRITE | EXEC;
+
+    assert_eq!(!rwx, NONE);
+    assert_eq!(!!rwx, READ | WRITE | EXEC);
+
+    assert_eq!(rwx & rwx, READ | WRITE | EXEC);
+    assert_eq!(rwx & READ, READ);
+    assert_eq!(READ & rwx, READ);
+    assert_eq!(READ & WRITE, NONE);
+
+    assert_eq!(rwx | rwx, READ | WRITE | EXEC);
+    assert_eq!(rwx | READ, READ | WRITE | EXEC);
+    assert_eq!(READ | rwx, READ | WRITE | EXEC);
+    assert_eq!(READ | WRITE, READ | WRITE);
+
+    assert_eq!(rwx ^ rwx, NONE);
+    assert_eq!(rwx ^ READ, WRITE | EXEC);
+    assert_eq!(READ ^ rwx, WRITE | EXEC);
     assert_eq!(READ ^ WRITE, READ | WRITE);
-    assert_eq!((READ | WRITE) & (WRITE | EXEC), WRITE);
-    assert_eq!((READ | WRITE) ^ (WRITE | EXEC), READ | EXEC);
-    assert_eq!((READ | WRITE) - (WRITE | EXEC), READ);
+
+    assert_eq!(rwx - rwx, NONE);
+    assert_eq!(rwx - READ, WRITE | EXEC);
+    assert_eq!(READ - rwx, NONE);
 }
 
 #[test]
-fn test_assign_ops() {
+fn test_flags_bit_assign_ops() {
+    let mut flags = READ | WRITE | EXEC;
+    flags &= READ | WRITE;
+    assert_eq!(flags, READ | WRITE);
+    flags &= WRITE | EXEC;
+    assert_eq!(flags, WRITE);
+
+    let mut flags = READ | WRITE;
+    flags |= READ | WRITE;
+    assert_eq!(flags, READ | WRITE);
+    flags |= WRITE | EXEC;
+    assert_eq!(flags, READ | WRITE | EXEC);
+
+    let mut flags = READ | WRITE | EXEC;
+    flags ^= READ | WRITE;
+    assert_eq!(flags, EXEC);
+    flags ^= WRITE | EXEC;
+    assert_eq!(flags, WRITE);
+
+    let mut flags = READ | WRITE | EXEC;
+    flags -= READ | WRITE;
+    assert_eq!(flags, EXEC);
+    flags -= WRITE | EXEC;
+    assert_eq!(flags, NONE);
+}
+
+#[test]
+fn test_flags_assign_flag_ops() {
+    let mut flags = READ | WRITE | EXEC;
+    flags &= READ;
+    assert_eq!(flags, READ);
+    flags &= WRITE;
+    assert_eq!(flags, NONE);
+
+    let mut flags = READ | WRITE;
+    flags |= READ;
+    assert_eq!(flags, READ | WRITE);
+    flags |= EXEC;
+    assert_eq!(flags, READ | WRITE | EXEC);
+
+    let mut flags = READ | WRITE | EXEC;
+    flags ^= READ;
+    assert_eq!(flags, WRITE | EXEC);
+    flags ^= READ;
+    assert_eq!(flags, READ | WRITE | EXEC);
+
+    let mut flags = READ | WRITE | EXEC;
+    flags -= READ;
+    assert_eq!(flags, WRITE | EXEC);
+    flags -= READ;
+    assert_eq!(flags, WRITE | EXEC);
+}
+
+#[test]
+fn test_flags_iterator() {
     let mut rwx = READ | WRITE | EXEC;
-    rwx |= READ;
-    assert_eq!(rwx, READ | WRITE | EXEC);
-    rwx &= !WRITE;
-    assert_eq!(rwx, READ | EXEC);
-    rwx ^= WRITE;
-    assert_eq!(rwx, READ | WRITE | EXEC);
-    rwx ^= READ;
-    assert_eq!(rwx, WRITE | EXEC);
-    rwx &= READ | EXEC;
-    assert_eq!(rwx, EXEC);
-    rwx |= WRITE;
-    assert_eq!(rwx, WRITE | EXEC);
-    rwx -= READ | WRITE;
-    assert_eq!(rwx, EXEC);
+    assert_eq!(rwx.into_iter().len(), 3);
+    assert_eq!(rwx.into_iter().size_hint(), (3, Some(3)));
+    assert_eq!(rwx.into_iter().collect::<Vec<_>>(), vec![READ, WRITE, EXEC]);
+    assert_eq!(
+        rwx.into_iter().rev().collect::<Vec<_>>(),
+        vec![EXEC, WRITE, READ]
+    );
+
+    assert_eq!(
+        (&rwx).into_iter().rev().collect::<Vec<_>>(),
+        vec![EXEC, WRITE, READ]
+    );
+    assert_eq!(
+        (&mut rwx).into_iter().rev().collect::<Vec<_>>(),
+        vec![EXEC, WRITE, READ]
+    );
+
+    let rw = READ | WRITE;
+    assert_eq!(rw.iter().len(), 2);
+    assert_eq!(rw.iter().size_hint(), (2, Some(2)));
+    assert_eq!(rw.iter().collect::<Vec<_>>(), vec![READ, WRITE]);
+    assert_eq!(rw.iter().rev().collect::<Vec<_>>(), vec![WRITE, READ]);
+
+    let none = NONE;
+    assert_eq!(none.iter().len(), 0);
+    assert_eq!(none.iter().size_hint(), (0, Some(0)));
+    assert_eq!(none.iter().collect::<Vec<_>>(), vec![NONE; 0]);
+    assert_eq!(none.iter().rev().collect::<Vec<_>>(), vec![NONE; 0]);
 }
 
 #[test]
-fn test_fmt_unnamed() {
+fn test_flags_extend() {
+    let mut rwx = NONE;
+    rwx.extend([READ, EXEC]);
+    assert_eq!(rwx.bits(), 0b101);
+    rwx.extend([
+        BitFlags::<u8, _>::from_bits_retain(0b1000),
+        BitFlags::<u8, _>::from_bits_retain(0b1000_0000),
+    ]);
+    assert_eq!(rwx.bits(), 0b1000_1101);
+}
+
+#[test]
+fn test_flags_fmt_unnamed() {
     let rwx = U_READ | U_WRITE | U_EXEC | UnnamedPerms::from_bits_retain(0b1000);
     assert_eq!(format!("{rwx}"), "0xf");
     assert_eq!(format!("{rwx:#}"), "0xf");
@@ -460,7 +581,7 @@ fn test_fmt_unnamed() {
 }
 
 #[test]
-fn test_fmt_named() {
+fn test_flags_fmt_named() {
     let rwx = READ | WRITE | EXEC | Perms::from_bits_retain(0b1000);
     assert_eq!(format!("{rwx}"), "read | write | exec | 0x8");
     assert_eq!(format!("{rwx:#}"), "read | write | exec | 0x8");
@@ -489,7 +610,7 @@ fn test_fmt_named() {
 }
 
 #[test]
-fn test_from_str() {
+fn test_flags_from_str() {
     assert_eq!(Perms::from_str("").unwrap(), NONE);
     assert!(Perms::from_str(" | ").is_err());
 
@@ -503,10 +624,13 @@ fn test_from_str() {
         Perms::from_str("0xD").unwrap(),
         READ | EXEC | Perms::from_bits_retain(0b1000)
     );
+    assert!(Perms::from_str("0x100").is_err());
+    assert!(Perms::from_str("0xG").is_err());
+    assert!(Perms::from_str("0x+D").is_err());
 }
 
 #[test]
-fn test_from_case_sensitive_str() {
+fn test_flags_from_case_sensitive_str() {
     #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
     struct CsPermsTag;
 
@@ -533,7 +657,7 @@ fn test_from_case_sensitive_str() {
 }
 
 #[test]
-fn test_from_case_insensitive_str() {
+fn test_flags_from_case_insensitive_str() {
     #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
     struct CiPermsTag;
 
@@ -560,11 +684,16 @@ fn test_from_case_insensitive_str() {
 }
 
 #[test]
-fn test_collect() {
+fn test_flags_collect() {
     assert_eq!(
         [Perms::from(READ), READ.into(), EXEC.into()]
             .into_iter()
             .collect::<Perms>(),
+        READ | EXEC
+    );
+
+    assert_eq!(
+        [READ, READ, EXEC].into_iter().collect::<Perms>(),
         READ | EXEC
     );
 
@@ -583,7 +712,7 @@ fn test_collect() {
 }
 
 #[test]
-fn test_skipped_flag_names() {
+fn test_flags_skipped_flag_names() {
     #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
     struct FlagsTag;
 
@@ -638,7 +767,7 @@ fn test_skipped_flag_names() {
 }
 
 #[test]
-fn test_flag_names_overflow() {
+fn test_flags_flag_names_beyond_bits() {
     #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
     struct FlagsTag;
 
@@ -692,7 +821,7 @@ fn test_flag_names_overflow() {
 }
 
 #[test]
-fn test_failing_partial_fmt() {
+fn test_flags_failing_partial_fmt() {
     struct SmallWriter(usize);
 
     impl Write for SmallWriter {
@@ -707,11 +836,13 @@ fn test_failing_partial_fmt() {
         }
     }
 
-    const FMT_LEN: usize = 25;
+    const FMT_LEN: usize = 171;
+
     #[cfg(feature = "alloc")]
     const NAMED_ERR_FMT_LEN: usize = 156;
     #[cfg(not(feature = "alloc"))]
     const NAMED_ERR_FMT_LEN: usize = 137;
+
     #[cfg(feature = "alloc")]
     const UNNAMED_ERR_FMT_LEN: usize = 84;
     #[cfg(not(feature = "alloc"))]
@@ -719,32 +850,41 @@ fn test_failing_partial_fmt() {
 
     let flags = READ | WRITE | EXEC | Perms::from_bits_retain(0b1000);
     for i in 0..FMT_LEN {
-        assert!(write!(&mut SmallWriter(i), "{flags}").is_err());
+        assert!(
+            write!(
+                &mut SmallWriter(i),
+                "{flags} {flags:#} {flags:b} {flags:#b} {flags:o} {flags:#o} {flags:x} {flags:#x} \
+                 {flags:X} {flags:#X} {flags:?} {flags:#?}"
+            )
+            .is_err(),
+            "{i}"
+        );
     }
-    assert!(write!(&mut SmallWriter(FMT_LEN), "{flags}").is_ok());
+    assert!(
+        write!(
+            &mut SmallWriter(FMT_LEN),
+            "{flags} {flags:#} {flags:b} {flags:#b} {flags:o} {flags:#o} {flags:x} {flags:#x} \
+             {flags:X} {flags:#X} {flags:?} {flags:#?}"
+        )
+        .is_ok()
+    );
 
     let error = Perms::from_str("readable").err().unwrap();
     for i in 0..NAMED_ERR_FMT_LEN {
-        assert!(
-            write!(&mut SmallWriter(i), "{error}").is_err(),
-            "Unexpectedly succeed at {i}"
-        );
+        assert!(write!(&mut SmallWriter(i), "{error}").is_err(), "{i}");
     }
     assert!(write!(&mut SmallWriter(NAMED_ERR_FMT_LEN), "{error}").is_ok());
 
     let error = UnnamedPerms::from_str("readable").err().unwrap();
     for i in 0..UNNAMED_ERR_FMT_LEN {
-        assert!(
-            write!(&mut SmallWriter(i), "{error}").is_err(),
-            "Unexpectedly succeed at {i}"
-        );
+        assert!(write!(&mut SmallWriter(i), "{error}").is_err(), "{i}");
     }
     assert!(write!(&mut SmallWriter(UNNAMED_ERR_FMT_LEN), "{error}").is_ok());
 }
 
 #[cfg(feature = "arbitrary")]
 #[test]
-fn test_arbitrary() {
+fn test_flags_arbitrary() {
     use arbitrary::{Arbitrary, Unstructured};
 
     let data = &[0b001, 0b010, 0b101, 0b1010];
@@ -763,7 +903,7 @@ fn test_arbitrary() {
 
 #[cfg(feature = "bytemuck")]
 #[test]
-fn test_bytemuck() {
+fn test_flags_bytemuck() {
     use bytemuck::{Pod, Zeroable};
 
     fn assert_pod<T: Pod>() {}
@@ -795,7 +935,7 @@ fn test_bytemuck() {
 
 #[cfg(feature = "serde")]
 #[test]
-fn test_serde_unnamed() {
+fn test_flags_serde_unnamed() {
     use serde_test::{Token, assert_de_tokens, assert_de_tokens_error, assert_tokens};
 
     #[cfg(not(feature = "alloc"))]
@@ -843,7 +983,7 @@ fn test_serde_unnamed() {
 
 #[cfg(feature = "serde")]
 #[test]
-fn test_serde_named() {
+fn test_flags_serde_named() {
     use serde_test::{Token, assert_de_tokens, assert_de_tokens_error, assert_tokens};
 
     #[cfg(not(feature = "alloc"))]
@@ -865,7 +1005,7 @@ fn test_serde_named() {
     assert_de_tokens_error::<Perms>(
         &[Token::Str("5")],
         "unrecognized named flag or hex flag, given: \"5\", expected \"\", or a \"|\"-separated \
-         set of \"read\", \"write\", \"exec\", or a valid hex flag",
+         set of \"read\", \"write\", \"exec\", or a valid hex flag with \"0x\" prefix",
     );
     #[cfg(not(feature = "alloc"))]
     assert_de_tokens_error::<Perms>(&[Token::Str("5")], ERROR_CORE);
@@ -874,7 +1014,7 @@ fn test_serde_named() {
     assert_de_tokens_error::<Perms>(
         &[Token::Str("red")],
         "unrecognized named flag or hex flag, given: \"red\", expected \"\", or a \"|\"-separated \
-         set of \"read\", \"write\", \"exec\", or a valid hex flag",
+         set of \"read\", \"write\", \"exec\", or a valid hex flag with \"0x\" prefix",
     );
     #[cfg(not(feature = "alloc"))]
     assert_de_tokens_error::<Perms>(&[Token::Str("red")], ERROR_CORE);
@@ -883,7 +1023,8 @@ fn test_serde_named() {
     assert_de_tokens_error::<Perms>(
         &[Token::Str("0xCOFFEE")],
         "unrecognized named flag or hex flag, given: \"0xCOFFEE\", expected \"\", or a \
-         \"|\"-separated set of \"read\", \"write\", \"exec\", or a valid hex flag",
+         \"|\"-separated set of \"read\", \"write\", \"exec\", or a valid hex flag with \"0x\" \
+         prefix",
     );
     #[cfg(not(feature = "alloc"))]
     assert_de_tokens_error::<Perms>(&[Token::Str("0xCOFFEE")], ERROR_CORE);
@@ -891,58 +1032,6 @@ fn test_serde_named() {
     assert_de_tokens_error::<Perms>(
         &[Token::I32(123)],
         "invalid type: integer `123`, expected \"\", or a \"|\"-separated set of \"read\", \
-         \"write\", \"exec\", or a valid hex flag",
+         \"write\", \"exec\", or a valid hex flag with \"0x\" prefix",
     );
-}
-
-#[test]
-fn main() {
-    use bitflags_lite::{BitFlags, BitFlagsSpec, NameMatcher};
-    use core::str::FromStr;
-
-    #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
-    struct PermissionsTag;
-
-    impl BitFlagsSpec<u32> for PermissionsTag {
-        const VALID_BITS_MASK: u32 = (1 << 3) - 1;
-        const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-        const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
-    }
-
-    type Permission = BitFlag<u32, PermissionsTag>;
-    type Permissions = BitFlags<u32, PermissionsTag>;
-
-    // Constructors are `const` for concrete integer types.
-    const READ: Permission = Permission::try_from_bit(0).unwrap();
-    const WRITE: Permission = Permission::try_from_bit(1).unwrap();
-    const EXEC: Permission = Permission::try_from_bit(2).unwrap();
-
-    let rwx = READ | WRITE | EXEC;
-    assert!(rwx.contains(READ.into()));
-    assert!(rwx.contains(WRITE.into()));
-    assert!(rwx.contains(EXEC.into()));
-    assert!(rwx.contains(READ | WRITE));
-
-    let read_exec = READ | EXEC;
-    assert!(!read_exec.contains(WRITE.into()));
-
-    let flags = Permissions::from_str("read | 0x18 | write").unwrap();
-    assert_eq!(format!("{flags}"), "read | write | 0x18");
-
-    let flags: Vec<Permission> = flags.into_iter().collect();
-    assert_eq!(
-        flags,
-        [
-            READ,
-            WRITE,
-            Permission::from_bit_retain(3),
-            Permission::from_bit_retain(4),
-        ]
-    );
-
-    let formatted: Vec<String> = flags.iter().map(|flag| format!("{flag}")).collect();
-    assert_eq!(formatted, ["read", "write", "0x8", "0x10"]);
-
-    let named_only: Vec<&'static str> = flags.iter().filter_map(BitFlag::name).collect();
-    assert_eq!(named_only, ["read", "write"]);
 }
