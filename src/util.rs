@@ -2,6 +2,8 @@
 //!
 //! This module is public to support the generic implementations in this crate,
 //! but its items are not intended to be used directly.
+//!
+//! [`BitFlags`]: struct.BitFlags.html
 
 use core::num::ParseIntError;
 

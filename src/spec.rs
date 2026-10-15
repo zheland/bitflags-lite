@@ -39,6 +39,14 @@
 /// assert_eq!(Permissions::try_from_bits(0b111), Some(READ | WRITE | EXEC));
 /// assert_eq!(Permissions::try_from_bits(0b1111), None);
 /// ```
+///
+/// [`BitFlags`]: struct.BitFlags.html
+/// [`BitFlags<T, U>`]: struct.BitFlags.html
+/// [`BitFlags::try_from_bits`]: struct.BitFlags.html#method.try_from_bits
+/// [`BitFlags::from_bits_truncate`]: struct.BitFlags.html#method.from_bits_truncate
+/// [`BitFlags::truncate`]: struct.BitFlags.html#method.truncate
+/// [`BitFlags::complement`]: struct.BitFlags.html#method.complement
+/// [`BitFlags::from_bits_retain`]: struct.BitFlags.html#method.from_bits_retain
 pub trait BitFlagsSpec<T> {
     /// A bit pattern whose set bits are the valid bits for this flag set.
     ///
@@ -47,6 +55,12 @@ pub trait BitFlagsSpec<T> {
     /// They are rejected by [`BitFlags::try_from_bits`] and cleared by
     /// [`BitFlags::from_bits_truncate`], [`BitFlags::truncate`],
     /// [`BitFlags::complement`], and [`Not`](core::ops::Not).
+    ///
+    /// [`BitFlags`]: struct.BitFlags.html
+    /// [`BitFlags::try_from_bits`]: struct.BitFlags.html#method.try_from_bits
+    /// [`BitFlags::from_bits_truncate`]: struct.BitFlags.html#method.from_bits_truncate
+    /// [`BitFlags::truncate`]: struct.BitFlags.html#method.truncate
+    /// [`BitFlags::complement`]: struct.BitFlags.html#method.complement
     const VALID_BITS_MASK: T;
 
     /// A slice indexed by bit position, where each element contains the names
@@ -58,6 +72,9 @@ pub trait BitFlagsSpec<T> {
     /// An empty inner slice means the bit has no name.
     ///
     /// The index `i` corresponds to the bit mask `1 << i`.
+    ///
+    /// [`BitFlag`]: struct.BitFlag.html
+    /// [`BitFlags`]: struct.BitFlags.html
     const FLAG_NAMES: &[&[&str]];
 
     /// Controls whether the default [`FromStr`](core::str::FromStr) and
@@ -69,8 +86,10 @@ pub trait BitFlagsSpec<T> {
     /// using ASCII case-insensitive comparison.
     ///
     /// This value does not affect methods that accept an explicit
-    /// [`NameMatcher`], such as [`BitFlags::try_from_str`] or
-    /// [`BitFlag::try_from_str`].
+    /// [`NameMatcher`], such as [`BitFlags::try_from_str`].
+    ///
+    /// [`BitFlags`]: struct.BitFlags.html
+    /// [`BitFlags::try_from_str`]: struct.BitFlags.html#method.try_from_str
     const DEFAULT_NAME_MATCHER: NameMatcher;
 }
 

@@ -28,6 +28,8 @@ use crate::{BitFlags, BitFlagsSpec, NameMatcher, util};
 /// [`Binary`](fmt::Binary), [`Octal`](fmt::Octal),
 /// [`LowerHex`](fmt::LowerHex), and [`UpperHex`](fmt::UpperHex) write the
 /// mask in the corresponding numeric base.
+///
+/// [`BitFlagsIter`]: struct.BitFlagsIter.html
 #[repr(transparent)]
 pub struct BitFlag<T, U>(u8, PhantomData<fn() -> T>, PhantomData<fn() -> *const U>)
 where
