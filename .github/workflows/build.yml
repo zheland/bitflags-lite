@@ -1,0 +1,132 @@
+name: build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cargo-fmt:
+    name: Check formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  cargo-clippy:
+    name: "Clippy (${{ matrix.rust-toolchain }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust-toolchain:
+          - stable
+          - nightly
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust-toolchain }}
+          components: clippy
+      - uses: taiki-e/install-action@cargo-hack
+      - uses: Swatinem/rust-cache@v2
+      - name: Run clippy
+        run: |
+          set -euo pipefail
+
+          cargo clippy --all-targets -- -D warnings
+          cargo hack clippy --all-targets --feature-powerset --depth 1 -- -D warnings
+          cargo clippy --all-targets --all-features -- -D warnings
+
+  cargo-test:
+    name: "Test (${{ matrix.name }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: stable
+            rust-toolchain: stable
+            target: ""
+            cargo-flags: ""
+          - name: beta
+            rust-toolchain: beta
+            target: ""
+            cargo-flags: ""
+          - name: nightly
+            rust-toolchain: nightly
+            target: ""
+            cargo-flags: ""
+          - name: 1.97.0
+            rust-toolchain: 1.97.0
+            target: ""
+            cargo-flags: ""
+          - name: stable release
+            rust-toolchain: stable
+            target: ""
+            cargo-flags: "--release"
+          - name: nightly release
+            rust-toolchain: nightly
+            target: ""
+            cargo-flags: "--release"
+          - name: no_std x86_64
+            rust-toolchain: stable
+            target: x86_64-unknown-none
+            cargo-flags: ""
+          - name: no_std thumbv7em
+            rust-toolchain: stable
+            target: thumbv7em-none-eabihf
+            cargo-flags: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust-toolchain }}
+          targets: ${{ matrix.target }}
+      - uses: taiki-e/install-action@cargo-hack
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Run tests
+        if: matrix.target == ''
+        run: |
+          set -euo pipefail
+          cargo hack test --all-targets --feature-powerset --depth 1 ${{ matrix.cargo-flags }}
+          cargo test --all-targets --all-features ${{ matrix.cargo-flags }}
+
+      - name: Run no_std checks
+        if: matrix.target != ''
+        run: |
+          set -euo pipefail
+          cargo hack check --lib \
+            --target ${{ matrix.target }} \
+            --feature-powerset \
+            --exclude-features std
+
+  cargo-deny:
+    name: Check licenses/bans/advisories/sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          arguments: --workspace --all-features
