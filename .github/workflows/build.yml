@@ -118,7 +118,7 @@ jobs:
           cargo hack check --lib \
             --target ${{ matrix.target }} \
             --feature-powerset \
-            --exclude-features std
+            --exclude-features "default,arbitrary,std"
 
   cargo-deny:
     name: Check licenses/bans/advisories/sources
