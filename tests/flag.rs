@@ -706,9 +706,8 @@ fn test_flag_serde_named() {
     use serde_test::{Token, assert_de_tokens, assert_de_tokens_error, assert_tokens};
 
     #[cfg(not(feature = "alloc"))]
-    const ERROR_CORE: &str = "unrecognized named flag or hex flag, expected \"\", or a \
-                              \"|\"-separated set of \"read\", \"write\", \"exec\", or a valid \
-                              hex flag";
+    const ERROR_CORE: &str = "unrecognized named flag or hex flag, expected one of \"read\", \
+                              \"write\", \"exec\", or a valid one-bit hex flag with \"0x\" prefix";
 
     assert_tokens(&READ, &[Token::Str("read")]);
     assert_tokens(&WRITE, &[Token::Str("write")]);

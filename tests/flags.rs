@@ -989,7 +989,7 @@ fn test_flags_serde_named() {
     #[cfg(not(feature = "alloc"))]
     const ERROR_CORE: &str = "unrecognized named flag or hex flag, expected \"\", or a \
                               \"|\"-separated set of \"read\", \"write\", \"exec\", or a valid \
-                              hex flag";
+                              hex flag with \"0x\" prefix";
 
     assert_tokens(&(READ | EXEC), &[Token::Str("read | exec")]);
     assert_de_tokens(&(READ | EXEC), &[Token::Str("  read  |execute          ")]);
