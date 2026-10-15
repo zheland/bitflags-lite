@@ -29,6 +29,44 @@ use crate::{BitFlags, BitFlagsSpec, NameMatcher, util};
 /// [`LowerHex`](fmt::LowerHex), and [`UpperHex`](fmt::UpperHex) write the
 /// mask in the corresponding numeric base.
 ///
+/// # Method summary
+///
+/// - [`from_bit_retain()`](Self::from_bit_retain): Return a flag for a bit
+///   index, without validation.
+/// - [`try_from_bit()`](Self::try_from_bit): Return a flag for a bit index,
+///   rejecting it if invalid.
+/// - [`try_from_bits()`](Self::try_from_bits): Return a flag from a single-bit
+///   mask, rejecting it if invalid.
+/// - [`try_from_bits_retain()`](Self::try_from_bits_retain): Return a flag from
+///   a single-bit mask, without validation.
+/// - [`try_from_flags()`](Self::try_from_flags): Return a flag from a
+///   [`BitFlags`] with exactly one valid bit.
+/// - [`try_from_str()`](Self::try_from_str): Parse from a name or a hex flag.
+/// - [`from_str_opt()`](Self::from_str_opt): Parse from a name or a hex flag,
+///   returning `Option`.
+/// - [`try_from_name()`](Self::try_from_name): Parse from a name only.
+/// - [`from_name_opt()`](Self::from_name_opt): Parse from a name only,
+///   returning `Option`.
+/// - [`try_from_hex()`](Self::try_from_hex): Parse from a hex flag only.
+/// - [`from_hex_opt()`](Self::from_hex_opt): Parse from a hex flag only,
+///   returning `Option`.
+/// - [`bit()`](Self::bit): Return the zero-based bit index.
+/// - [`mask()`](Self::mask): Return the single-bit mask, or `None` if out of
+///   range.
+/// - [`name()`](Self::name): Return the primary name, if any.
+/// - [`name_and_aliases()`](Self::name_and_aliases): Return all names and
+///   aliases.
+/// - [`is_valid()`](Self::is_valid): Return `true` if the bit is valid for the
+///   tag.
+/// - [`intersection()`](Self::intersection): Return the bits set in both flags.
+/// - [`union()`](Self::union): Return the bits set in either flag.
+/// - [`difference()`](Self::difference): Return the bits set in `self` but not
+///   in `other`.
+/// - [`symmetric_difference()`](Self::symmetric_difference): Return the bits
+///   set in exactly one flag.
+/// - [`complement()`](Self::complement): Return the valid bits not set in
+///   `self`.
+///
 /// [`BitFlagsIter`]: struct.BitFlagsIter.html
 #[repr(transparent)]
 pub struct BitFlag<T, U>(u8, PhantomData<fn() -> T>, PhantomData<fn() -> *const U>)

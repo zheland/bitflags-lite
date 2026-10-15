@@ -58,6 +58,50 @@ use crate::{BitFlag, BitFlagsIter, BitFlagsSpec, NameMatcher, util};
 /// assert!(rw.contains(WRITE));
 /// assert!(!rw.contains(EXEC));
 /// ```
+///
+/// # Method summary
+///
+/// - [`empty()`](Self::empty): Return a set with no bits set.
+/// - [`all_valid()`](Self::all_valid): Return a set with all valid bits set.
+/// - [`from_bits_retain()`](Self::from_bits_retain): Convert from raw bits
+///   without validation.
+/// - [`from_bits_truncate()`](Self::from_bits_truncate): Convert from raw bits,
+///   clearing invalid bits.
+/// - [`try_from_bits()`](Self::try_from_bits): Convert from raw bits, rejecting
+///   invalid bits.
+/// - [`from_bit_retain()`](Self::from_bit_retain): Return a set with only the
+///   bit at a given index, without validation.
+/// - [`from_bit_truncate()`](Self::from_bit_truncate): Return a set with only
+///   the bit at a given index, clearing it if invalid.
+/// - [`try_from_bit()`](Self::try_from_bit): Return a set with only the bit at
+///   a given index, rejecting it if invalid.
+/// - [`from_flag()`](Self::from_flag): Convert from a single [`BitFlag`].
+/// - [`try_from_str()`](Self::try_from_str): Parse from a separated string.
+/// - [`bits()`](Self::bits): Return the raw stored bits.
+/// - [`bits_mut()`](Self::bits_mut): Return a mutable reference to the raw
+///   bits.
+/// - [`into_bits()`](Self::into_bits): Consume the set and return the raw bits.
+/// - [`iter()`](Self::iter): Return an iterator over the set bits.
+/// - [`is_empty()`](Self::is_empty): Return `true` if no bits are set.
+/// - [`is_valid()`](Self::is_valid): Return `true` if all set bits are valid
+///   for the tag.
+/// - [`intersects()`](Self::intersects): Return `true` if any bits are shared.
+/// - [`contains()`](Self::contains): Return `true` if all bits of another set
+///   are present.
+/// - [`insert()`](Self::insert): Add all bits of another set.
+/// - [`remove()`](Self::remove): Remove all bits of another set.
+/// - [`toggle()`](Self::toggle): Flip all bits of another set.
+/// - [`set()`](Self::set): Insert or remove bits based on a boolean.
+/// - [`clear()`](Self::clear): Remove all bits, valid and invalid.
+/// - [`truncate()`](Self::truncate): Remove all invalid bits.
+/// - [`intersection()`](Self::intersection): Return the bits set in both sets.
+/// - [`union()`](Self::union): Return the bits set in either set.
+/// - [`difference()`](Self::difference): Return the bits set in `self` but not
+///   in `other`.
+/// - [`symmetric_difference()`](Self::symmetric_difference): Return the bits
+///   set in exactly one set.
+/// - [`complement()`](Self::complement): Return the valid bits not set in
+///   `self`.
 #[repr(transparent)]
 pub struct BitFlags<T, U>(
     T,
