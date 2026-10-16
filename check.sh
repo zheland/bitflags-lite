@@ -137,28 +137,29 @@ libdoc="$( cat src/lib.rs | normalize_docs "lib.rs" )"
 echo_and_run git diff <(echo "$readme") <(echo "$libdoc")
 
 params_sets=(
-    'stable,stable,,'
-    'beta,beta,,'
-    'nightly,nightly,,'
-    '1.97.0,1.97.0,,'
-    'stable release,stable,,"--release"'
-    'nightly release,nightly,,"--release"'
-    'no_std x86_64,stable,x86_64-unknown-none,'
-    'no_std thumbv7em,stable,thumbv7em-none-eabihf,'
+    'stable,,'
+    'beta,,'
+    'nightly,,'
+    '1.97.0,,'
+    'stable,,--release'
+    'nightly,,--release'
+    'stable,x86_64-unknown-none,'
+    'stable,thumbv7em-none-eabihf,'
 );
 
 
 for params in "${params_sets[@]}"; do
-    IFS=, read -r name toolchain target flags <<< "$params"
+    IFS=, read -r toolchain target flags <<< "$params"
     if [[ $target == "" ]]; then
-        echo_and_run cargo hack test --all-targets --feature-powerset $flags
-        echo_and_run cargo test --all-targets --all-features $flags
-        echo_and_run cargo test --doc --all-features $flags
+        echo_and_run cargo +$toolchain hack clippy --all-targets --feature-powerset $flags -- -D warnings
+        echo_and_run cargo +$toolchain hack test --all-targets --feature-powerset $flags
+        echo_and_run cargo +$toolchain hack test --doc --feature-powerset $flags
     else
-        echo_and_run cargo hack check --lib \
+        echo_and_run cargo +$toolchain hack check --lib \
             --target $target \
             --feature-powerset \
-            --exclude-features "default,arbitrary,std"
+            --exclude-features "default,arbitrary,std" \
+            $flags
     fi
 done
 
