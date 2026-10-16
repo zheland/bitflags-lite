@@ -96,7 +96,9 @@
 //! use bitflags_lite::{BitFlag, BitFlags, BitFlagsSpec, NameMatcher};
 //!
 //! bitflags_lite::bitflags! {
-//!     pub type Permissions = BitFlags<u32, pub struct PermissionsTag>;
+//!     #![storage(u32)]
+//!
+//!     pub struct PermissionsTag;
 //!
 //!     pub bit READ  = 0, &["read"];
 //!     pub bit WRITE = 1, &["write"];
@@ -105,7 +107,9 @@
 //!     pub mask RWX  = [READ, WRITE, EXEC], "rwx";
 //!     pub mask NONE = 0, "none";
 //! }
+//!
 //! pub type Permission = BitFlag<u32, PermissionsTag>;
+//! pub type Permissions = BitFlags<u32, PermissionsTag>;
 //!
 //! let rwx = READ | WRITE | EXEC;
 //! assert!(rwx.contains(READ.into()));

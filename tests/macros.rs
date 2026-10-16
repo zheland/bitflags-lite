@@ -7,7 +7,9 @@ use bitflags_lite::{BitFlagsSpec, NameMatcher};
 #[test]
 fn test_macro_generated_simple() {
     bitflags_lite::bitflags! {
-        pub type Permissions = BitFlags<u32, pub struct PermissionsTag>;
+        #![storage(u32)]
+
+        pub struct PermissionsTag;
 
         pub bit READ  = 0, &["read"];
         pub bit WRITE = 1, &["write"];
@@ -38,13 +40,11 @@ fn test_macro_generated_simple() {
 #[test]
 fn test_macro_generated_with_gaps() {
     bitflags_lite::bitflags! {
+        #![storage(u32)]
         #![name_matcher(NameMatcher::AsciiCaseInsensitive)]
-        /// Flags doc-comment.
-        pub type Flags = BitFlags<
-            u32,
-            /// Flags tag doc-comment.
-            pub struct FlagsTag
-        >;
+
+        /// Flags tag doc-comment.
+        pub struct FlagsTag;
 
         /// FIRST BitFlag doc-comment.
         pub bit FIRST = 0, &["first", "1st"];
