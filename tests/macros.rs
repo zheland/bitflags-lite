@@ -46,26 +46,26 @@ fn test_macro_generated_with_gaps() {
         /// Flags tag doc-comment.
         pub struct FlagsTag;
 
-        /// FIRST `BitFlag` doc-comment.
+        /// `FIRST` `BitFlag` doc-comment.
         pub bit FIRST = 0, &["first", "1st"];
 
-        /// THIRD `BitFlag` doc-comment.
+        /// `THIRD` `BitFlag` doc-comment.
         pub bit THIRD = 2, &["third", "3rd"];
 
         pub bit       = 3;
 
-        /// TENTH `BitFlag` doc-comment.
+        /// `TENTH` `BitFlag` doc-comment.
         pub bit TENTH = 9, &["tenth", "10th"];
 
-        /// ALL `BitFlags` doc-comment.
+        /// `ALL` `BitFlags` doc-comment.
         pub mask ALL     = [ FIRST, THIRD, TENTH ], "all";
 
-        /// ALL_ALT `BitFlags` doc-comment.
+        /// `ALL_ALT` `BitFlags` doc-comment.
         pub mask ALL_ALT = FIRST.mask_or_default()
                          | THIRD.mask_or_default()
                          | TENTH.mask_or_default();
 
-        /// NONE `BitFlags` doc-comment.
+        /// `NONE` `BitFlags` doc-comment.
         pub mask NONE    = 0, "none";
     }
 
