@@ -251,26 +251,26 @@
 ///     /// Flags tag doc-comment.
 ///     pub struct FlagsTag;
 ///
-///     /// FIRST BitFlag doc-comment.
+///     /// FIRST `BitFlag` doc-comment.
 ///     pub bit FIRST = 0, &["first", "1st"];
 ///
-///     /// THIRD BitFlag doc-comment.
+///     /// THIRD `BitFlag` doc-comment.
 ///     pub bit THIRD = 2, &["third", "3rd"];
 ///
 ///     pub bit       = 3;
 ///
-///     /// TENTH BitFlag doc-comment.
+///     /// TENTH `BitFlag` doc-comment.
 ///     pub bit TENTH = 9, &["tenth", "10th"];
 ///
-///     /// ALL BitFlags doc-comment.
+///     /// ALL `BitFlags` doc-comment.
 ///     pub mask ALL     = [ FIRST, THIRD, TENTH ], "all";
 ///
-///     /// ALL_ALT BitFlags doc-comment.
+///     /// ALL_ALT `BitFlags` doc-comment.
 ///     pub mask ALL_ALT = FIRST.mask_or_default()
 ///                      | THIRD.mask_or_default()
 ///                      | TENTH.mask_or_default();
 ///
-///     /// NONE BitFlags doc-comment.
+///     /// NONE `BitFlags` doc-comment.
 ///     pub mask NONE    = 0, "none";
 /// }
 ///
@@ -354,19 +354,19 @@
 ///         (NameMatcher::AsciiCaseInsensitive);
 /// }
 ///
-/// #[doc = r" FIRST BitFlag doc-comment."]
+/// #[doc = r" FIRST `BitFlag` doc-comment."]
 /// pub const FIRST: bitflags_lite::BitFlag<u32, FlagsTag> =
 ///     bitflags_lite::BitFlag::<u32, FlagsTag>::from_bit_retain(0);
 ///
-/// #[doc = r" THIRD BitFlag doc-comment."]
+/// #[doc = r" THIRD `BitFlag` doc-comment."]
 /// pub const THIRD: bitflags_lite::BitFlag<u32, FlagsTag> =
 ///     bitflags_lite::BitFlag::<u32, FlagsTag>::from_bit_retain(2);
 ///
-/// #[doc = r" TENTH BitFlag doc-comment."]
+/// #[doc = r" TENTH `BitFlag` doc-comment."]
 /// pub const TENTH: bitflags_lite::BitFlag<u32, FlagsTag> =
 ///     bitflags_lite::BitFlag::<u32, FlagsTag>::from_bit_retain(9);
 ///
-/// #[doc = r" ALL BitFlags doc-comment."]
+/// #[doc = r" ALL `BitFlags` doc-comment."]
 /// pub const ALL: bitflags_lite::BitFlags<u32, FlagsTag> =
 ///     bitflags_lite::BitFlags::<u32, FlagsTag>::from_bits_retain(
 ///         (0 | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_default(&FIRST)
@@ -374,13 +374,13 @@
 ///             | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_default(&TENTH)),
 ///     );
 ///
-/// #[doc = r" ALL_ALT BitFlags doc-comment."]
+/// #[doc = r" ALL_ALT `BitFlags` doc-comment."]
 /// pub const ALL_ALT: bitflags_lite::BitFlags<u32, FlagsTag> =
 ///     bitflags_lite::BitFlags::<u32, FlagsTag>::from_bits_retain(
 ///         (FIRST.mask_or_default() | THIRD.mask_or_default() | TENTH.mask_or_default()),
 ///     );
 ///
-/// #[doc = r" NONE BitFlags doc-comment."]
+/// #[doc = r" NONE `BitFlags` doc-comment."]
 /// pub const NONE: bitflags_lite::BitFlags<u32, FlagsTag> =
 ///     bitflags_lite::BitFlags::<u32, FlagsTag>::from_bits_retain(0);
 /// ```
