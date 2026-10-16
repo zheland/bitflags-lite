@@ -451,6 +451,17 @@ macro_rules! impl_bit_flag {
                 }
             }
 
+            #[doc(hidden)]
+            #[inline]
+            #[must_use]
+            pub const fn __mask_or_zero(&self) -> $ty {
+                if let Some(mask) = self.mask() {
+                    mask
+                } else {
+                    0
+                }
+            }
+
             /// Returns the intersection of `self` and `other`.
             ///
             /// This is a raw-bit operation.

@@ -126,3 +126,19 @@ impl_uint_opt_ext!(i32);
 impl_uint_opt_ext!(i64);
 impl_uint_opt_ext!(i128);
 impl_uint_opt_ext!(isize);
+
+#[doc(hidden)]
+#[inline]
+#[must_use]
+pub const fn __const_max(values: &[usize]) -> usize {
+    let mut max = 0;
+    let mut index = 0;
+    while index < values.len() {
+        if values[index] > max {
+            max = values[index];
+        }
+        #[expect(clippy::arithmetic_side_effects, reason = "never exceeds `usize::MAX`")]
+        (index += 1);
+    }
+    max
+}

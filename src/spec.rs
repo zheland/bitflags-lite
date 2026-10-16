@@ -25,7 +25,7 @@
 /// impl BitFlagsSpec<u32> for PermissionsTag {
 ///     const VALID_BITS_MASK: u32 = 0b111;
 ///     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-///     const COMBINED_NAMES: &[(u8, &str)] = &[(0, "none"), (0b111, "rwx")];
+///     const COMBINED_NAMES: &[(u32, &str)] = &[(0, "none"), (0b111, "rwx")];
 ///     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 /// }
 ///
@@ -93,6 +93,10 @@ where
     /// It is **not** consulted by [`Display`](core::fmt::Display).
     /// Formatting a value with multiple bits set always writes the individual
     /// flag names from [`FLAG_NAMES`], never a combined name.
+    ///
+    /// [`FLAG_NAMES`]: trait.BitFlagsSpec.html#associatedconstant.FLAG_NAMES
+    /// [`BitFlags::try_from_str`]: struct.BitFlags.html#method.try_from_str
+    /// [`BitFlags::from_str_opt`]: struct.BitFlags.html#method.from_str_opt
     const COMBINED_NAMES: &[(T, &str)];
 
     /// Controls whether the default [`FromStr`](core::str::FromStr) and

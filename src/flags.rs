@@ -44,7 +44,7 @@ use crate::{BitFlag, BitFlagsIter, BitFlagsSpec, NameMatcher, util};
 /// impl BitFlagsSpec<u32> for PermissionsTag {
 ///     const VALID_BITS_MASK: u32 = 0b111;
 ///     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-///     const COMBINED_NAMES: &[(u8, &str)] = &[(0, "none"), (0b111, "rwx")];
+///     const COMBINED_NAMES: &[(u32, &str)] = &[(0, "none"), (0b111, "rwx")];
 ///     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 /// }
 ///

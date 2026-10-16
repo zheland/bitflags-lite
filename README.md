@@ -86,7 +86,7 @@ struct PermissionsTag;
 impl BitFlagsSpec<u32> for PermissionsTag {
     const VALID_BITS_MASK: u32 = 0b111;
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
-    const COMBINED_NAMES: &[(u8, &str)] = &[(0, "none"), (0b111, "rwx")];
+    const COMBINED_NAMES: &[(u32, &str)] = &[(0, "none"), (0b111, "rwx")];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 }
 
@@ -143,6 +143,7 @@ type Perms = BitFlags<u8, PermsTag>;
 impl BitFlagsSpec<u8> for PermsTag {
     const VALID_BITS_MASK: u8 = (1 << 3) - 1;
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+    const COMBINED_NAMES: &[(u8, &str)] = &[(0, "none"), (0b111, "rwx")];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::AsciiCaseInsensitive;
 }
 
@@ -151,6 +152,7 @@ type KeyboardModifiers = BitFlags<u8, KeyboardModifiersTag>;
 impl BitFlagsSpec<u8> for KeyboardModifiersTag {
     const VALID_BITS_MASK: u8 = (1 << 4) - 1;
     const FLAG_NAMES: &[&[&str]] = &[&["Shift"], &["Ctrl"], &["Alt"], &["Meta"]];
+    const COMBINED_NAMES: &[(u8, &str)] = &[];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::AsciiCaseInsensitive;
 }
 
