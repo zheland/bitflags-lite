@@ -119,8 +119,9 @@ type Perm = BitFlag<MyU8, PermsTag>;
 type Perms = BitFlags<MyU8, PermsTag>;
 
 impl BitFlagsSpec<MyU8> for PermsTag {
-    const VALID_BITS_MASK: MyU8 = MyU8((1 << 3) - 1);
+    const VALID_BITS_MASK: MyU8 = MyU8(0b111);
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+    const COMBINED_NAMES: &[(MyU8, &str)] = &[];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 }
 

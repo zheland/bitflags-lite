@@ -23,8 +23,9 @@
 /// struct PermissionsTag;
 ///
 /// impl BitFlagsSpec<u32> for PermissionsTag {
-///     const VALID_BITS_MASK: u32 = (1 << 3) - 1;
+///     const VALID_BITS_MASK: u32 = 0b111;
 ///     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+///     const COMBINED_NAMES: &[(u8, &str)] = &[(0, "none"), (0b111, "rwx")];
 ///     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 /// }
 ///
@@ -47,7 +48,10 @@
 /// [`BitFlags::truncate`]: struct.BitFlags.html#method.truncate
 /// [`BitFlags::complement`]: struct.BitFlags.html#method.complement
 /// [`BitFlags::from_bits_retain`]: struct.BitFlags.html#method.from_bits_retain
-pub trait BitFlagsSpec<T> {
+pub trait BitFlagsSpec<T>
+where
+    T: 'static,
+{
     /// A bit pattern whose set bits are the valid bits for this flag set.
     ///
     /// Bits not set in this value are invalid for the associated [`BitFlags`]
@@ -76,6 +80,20 @@ pub trait BitFlagsSpec<T> {
     /// [`BitFlag`]: struct.BitFlag.html
     /// [`BitFlags`]: struct.BitFlags.html
     const FLAG_NAMES: &[&[&str]];
+
+    /// Names for combinations of flags, used when parsing.
+    ///
+    /// Each entry pairs a bit pattern with the names that should parse to it.
+    /// A combined name accepts any bit pattern that matches, whether or not
+    /// the individual bits are named in [`FLAG_NAMES`].
+    ///
+    /// This const is consulted by [`BitFlags::try_from_str`],
+    /// [`BitFlags::from_str_opt`], and the [`FromStr`](core::str::FromStr)
+    /// implementation.
+    /// It is **not** consulted by [`Display`](core::fmt::Display).
+    /// Formatting a value with multiple bits set always writes the individual
+    /// flag names from [`FLAG_NAMES`], never a combined name.
+    const COMBINED_NAMES: &[(T, &str)];
 
     /// Controls whether the default [`FromStr`](core::str::FromStr) and
     /// `Deserialize` implementations for [`BitFlags`] parse named flags

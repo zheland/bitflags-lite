@@ -55,7 +55,7 @@ where
     #[must_use]
     fn from_bit_truncate(bit: u8) -> Self
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Creates a flag set from bit index `bit` if that bit is valid.
@@ -65,7 +65,7 @@ where
     #[must_use]
     fn try_from_bit(bit: u8) -> Option<Self>
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Creates a flag set from raw bits if all set bits are valid.
@@ -79,7 +79,7 @@ where
     #[must_use]
     fn try_from_bits(bits: T) -> Option<Self>
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Creates a flag set from raw bits, clearing any bits not present in
@@ -89,7 +89,7 @@ where
     #[must_use]
     fn from_bits_truncate(bits: T) -> Self
     where
-        T: BitAnd<T, Output = T>,
+        T: 'static + BitAnd<T, Output = T>,
         U: BitFlagsSpec<T>;
 
     /// Returns `true` if no bits are set.
@@ -115,7 +115,7 @@ where
     #[must_use]
     fn is_valid(&self) -> bool
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Returns `true` if `self` and `other` have at least one set bit in
@@ -149,7 +149,7 @@ where
     /// This leaves `self` unchanged if it already contains only valid bits.
     fn truncate(&mut self)
     where
-        T: BitAndAssign<T>,
+        T: 'static + BitAndAssign<T>,
         U: BitFlagsSpec<T>;
 
     /// Inserts all bits from `other`.
@@ -238,7 +238,7 @@ where
     #[must_use]
     fn complement(self) -> Self
     where
-        T: Copy + Not<Output = T> + BitAnd<T, Output = T>,
+        T: 'static + Copy + Not<Output = T> + BitAnd<T, Output = T>,
         U: BitFlagsSpec<T>;
 }
 
@@ -265,7 +265,7 @@ where
     #[inline]
     fn from_bit_truncate(bit: u8) -> Self
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         Self::try_from_bit(bit).unwrap_or(Self::empty())
@@ -274,7 +274,7 @@ where
     #[inline]
     fn try_from_bit(bit: u8) -> Option<Self>
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         T::ONE
@@ -285,7 +285,7 @@ where
     #[inline]
     fn try_from_bits(bits: T) -> Option<Self>
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         (bits & !U::VALID_BITS_MASK == T::ZERO).then(|| Self::from_bits_retain(bits))
@@ -294,7 +294,7 @@ where
     #[inline]
     fn from_bits_truncate(bits: T) -> Self
     where
-        T: BitAnd<T, Output = T>,
+        T: 'static + BitAnd<T, Output = T>,
         U: BitFlagsSpec<T>,
     {
         Self::from_bits_retain(bits & U::VALID_BITS_MASK)
@@ -311,7 +311,7 @@ where
     #[inline]
     fn is_valid(&self) -> bool
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         self.bits() & !U::VALID_BITS_MASK == T::ZERO
@@ -344,7 +344,7 @@ where
     #[inline]
     fn truncate(&mut self)
     where
-        T: BitAndAssign<T>,
+        T: 'static + BitAndAssign<T>,
         U: BitFlagsSpec<T>,
     {
         *self.bits_mut() &= U::VALID_BITS_MASK;
@@ -421,7 +421,7 @@ where
     #[inline]
     fn complement(self) -> Self
     where
-        T: Copy + Not<Output = T> + BitAnd<T, Output = T>,
+        T: 'static + Copy + Not<Output = T> + BitAnd<T, Output = T>,
         U: BitFlagsSpec<T>,
     {
         Self::from_bits_retain(!self.bits() & U::VALID_BITS_MASK)

@@ -42,8 +42,9 @@ use crate::{BitFlag, BitFlagsIter, BitFlagsSpec, NameMatcher, util};
 /// struct PermissionsTag;
 ///
 /// impl BitFlagsSpec<u32> for PermissionsTag {
-///     const VALID_BITS_MASK: u32 = (1 << 3) - 1;
+///     const VALID_BITS_MASK: u32 = 0b111;
 ///     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+///     const COMBINED_NAMES: &[(u8, &str)] = &[(0, "none"), (0b111, "rwx")];
 ///     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 /// }
 ///
@@ -162,6 +163,7 @@ where
     #[must_use]
     pub const fn all_valid() -> Self
     where
+        T: 'static,
         U: BitFlagsSpec<T>,
     {
         Self(U::VALID_BITS_MASK, PhantomData)
@@ -260,7 +262,7 @@ where
         name_matcher: NameMatcher,
     ) -> Result<Self, BitFlagsParseError>
     where
-        T: BitOrAssign<T> + util::IntOpsExt,
+        T: 'static + Copy + BitOrAssign<T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         if input.trim().is_empty() {
@@ -269,13 +271,20 @@ where
 
         let mut this = Self::empty();
         let input = input.split(separator);
-        for input in input {
+        'a: for input in input {
             let input = input.trim();
 
             let flag = BitFlag::from_name_opt(input, name_matcher);
             if let Some(flag) = flag {
                 this |= flag;
                 continue;
+            }
+
+            for (flags, name) in U::COMBINED_NAMES {
+                if input == *name {
+                    this |= Self::from_bits_retain(*flags);
+                    continue 'a;
+                }
             }
 
             if let Some(maybe_hex_flag) = input.strip_prefix("0x") {
@@ -1041,7 +1050,7 @@ where
 
 impl<T, U> Not for BitFlags<T, U>
 where
-    T: Not<Output = T> + BitAnd<T, Output = T>,
+    T: 'static + Not<Output = T> + BitAnd<T, Output = T>,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Output = Self;
@@ -1054,7 +1063,8 @@ where
 
 impl<T, U> fmt::Display for BitFlags<T, U>
 where
-    T: Copy
+    T: 'static
+        + Copy
         + PartialEq
         + Not<Output = T>
         + BitAnd<T, Output = T>
@@ -1152,7 +1162,7 @@ where
 
 impl<T, U> FromStr for BitFlags<T, U>
 where
-    T: BitOrAssign<T> + util::IntOpsExt,
+    T: 'static + Copy + BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Err = BitFlagsParseError;
@@ -1320,7 +1330,8 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<T, U> serde::Serialize for BitFlags<T, U>
 where
-    T: Copy
+    T: 'static
+        + Copy
         + PartialEq
         + Not<Output = T>
         + BitAnd<T, Output = T>
@@ -1343,7 +1354,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de, T, U> serde::Deserialize<'de> for BitFlags<T, U>
 where
-    T: BitOrAssign<T> + util::IntOpsExt,
+    T: 'static + Copy + BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
@@ -1359,7 +1370,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<T, U> serde::de::Visitor<'_> for BitFlagsVisitor<T, U>
 where
-    T: BitOrAssign<T> + util::IntOpsExt,
+    T: 'static + Copy + BitOrAssign<T> + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Value = BitFlags<T, U>;

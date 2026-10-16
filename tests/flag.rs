@@ -16,8 +16,9 @@ type Perm = BitFlag<u8, PermsTag>;
 type Perms = BitFlags<u8, PermsTag>;
 
 impl BitFlagsSpec<u8> for PermsTag {
-    const VALID_BITS_MASK: u8 = (1 << 3) - 1;
+    const VALID_BITS_MASK: u8 = 0b111;
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+    const COMBINED_NAMES: &[(u8, &str)] = &[];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 }
 
@@ -31,8 +32,9 @@ struct UnnamedPermsTag;
 type UnnamedPerm = BitFlag<u8, UnnamedPermsTag>;
 
 impl BitFlagsSpec<u8> for UnnamedPermsTag {
-    const VALID_BITS_MASK: u8 = (1 << 3) - 1;
+    const VALID_BITS_MASK: u8 = 0b111;
     const FLAG_NAMES: &[&[&str]] = &[];
+    const COMBINED_NAMES: &[(u8, &str)] = &[];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 }
 
@@ -421,8 +423,9 @@ fn test_flag_try_from_name_with_no_names() {
     type Flag = BitFlag<u8, FlagsTag>;
 
     impl BitFlagsSpec<u8> for FlagsTag {
-        const VALID_BITS_MASK: u8 = (1 << 3) - 1;
+        const VALID_BITS_MASK: u8 = 0b111;
         const FLAG_NAMES: &[&[&str]] = &[&[], &[], &[]];
+        const COMBINED_NAMES: &[(u8, &str)] = &[];
         const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
     }
 
@@ -442,8 +445,9 @@ fn test_flag_try_from_name_with_skipped() {
     type Flag = BitFlag<u8, FlagsTag>;
 
     impl BitFlagsSpec<u8> for FlagsTag {
-        const VALID_BITS_MASK: u8 = (1 << 3) - 1;
+        const VALID_BITS_MASK: u8 = 0b111;
         const FLAG_NAMES: &[&[&str]] = &[&["first"], &[], &["third"]];
+        const COMBINED_NAMES: &[(u8, &str)] = &[];
         const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
     }
 

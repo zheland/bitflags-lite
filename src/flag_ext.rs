@@ -24,7 +24,7 @@ where
     #[must_use]
     fn try_from_flags(flags: BitFlags<T, U>) -> Option<Self>
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Creates a validated bit flag for bit index `i`.
@@ -37,7 +37,7 @@ where
     #[must_use]
     fn try_from_bit(i: u8) -> Option<Self>
     where
-        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Creates a validated bit flag from `bits` if exactly one bit is
@@ -49,7 +49,7 @@ where
     #[must_use]
     fn try_from_bits(bits: T) -> Option<Self>
     where
-        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Creates a single-bit flag from `bits` if exactly one bit is set.
@@ -73,7 +73,7 @@ where
     #[must_use]
     fn is_valid(&self) -> bool
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 
     /// Returns the single-bit mask for this flag, or `None` if the bit index is
@@ -137,7 +137,7 @@ where
     #[must_use]
     fn complement(self) -> BitFlags<T, U>
     where
-        T: Copy + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>;
 }
 
@@ -148,7 +148,7 @@ where
     #[inline]
     fn try_from_flags(flags: BitFlags<T, U>) -> Option<Self>
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         Self::try_from_bits(flags.bits())
@@ -157,7 +157,7 @@ where
     #[inline]
     fn try_from_bit(i: u8) -> Option<Self>
     where
-        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         let bits = T::ONE.checked_shl(u32::from(i))?;
@@ -167,7 +167,7 @@ where
     #[inline]
     fn try_from_bits(bits: T) -> Option<Self>
     where
-        T: PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         if bits.count_ones() == 1
@@ -198,7 +198,7 @@ where
     #[inline]
     fn is_valid(&self) -> bool
     where
-        T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         (self.bit() < T::BITS) && BitFlags::<T, U>::from_flag(*self).is_valid()
@@ -251,7 +251,7 @@ where
     #[inline]
     fn complement(self) -> BitFlags<T, U>
     where
-        T: Copy + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+        T: 'static + Copy + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         <BitFlags<T, U> as BitFlagsExt<T, U>>::from_flag(self).complement()

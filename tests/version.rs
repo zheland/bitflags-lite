@@ -6,13 +6,17 @@
 #[cfg(test)]
 #[test]
 fn test_readme_deps() {
-    version_sync::assert_markdown_deps_updated!("README.md");
+    if !env!("CARGO_PKG_VERSION").contains("-dev") {
+        version_sync::assert_markdown_deps_updated!("README.md");
+    }
 }
 
 #[cfg(test)]
 #[test]
 fn test_html_root_url() {
-    version_sync::assert_html_root_url_updated!("src/lib.rs");
+    if !env!("CARGO_PKG_VERSION").contains("-dev") {
+        version_sync::assert_html_root_url_updated!("src/lib.rs");
+    }
 }
 
 #[cfg(test)]

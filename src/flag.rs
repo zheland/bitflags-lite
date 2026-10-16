@@ -114,6 +114,7 @@ where
     #[must_use]
     pub const fn name(&self) -> Option<&'static str>
     where
+        T: 'static,
         U: BitFlagsSpec<T>,
     {
         let names_and_aliases = self.name_and_aliases();
@@ -133,6 +134,7 @@ where
     #[must_use]
     pub const fn name_and_aliases(&self) -> &'static [&'static str]
     where
+        T: 'static,
         U: BitFlagsSpec<T>,
     {
         #[expect(clippy::as_conversions, reason = "supported in const functions")]
@@ -158,7 +160,7 @@ where
     #[inline]
     pub fn try_from_str(input: &str, name_matcher: NameMatcher) -> Result<Self, BitFlagParseError>
     where
-        T: util::IntOpsExt,
+        T: 'static + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         if let Some(flag) = Self::from_str_opt(input, name_matcher) {
@@ -185,7 +187,7 @@ where
     #[must_use]
     pub fn from_str_opt(input: &str, name_matcher: NameMatcher) -> Option<Self>
     where
-        T: util::IntOpsExt,
+        T: 'static + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         if let Some(flag) = Self::from_name_opt(input, name_matcher) {
@@ -214,7 +216,7 @@ where
         name_matcher: NameMatcher,
     ) -> Result<Self, BitFlagParseNameError>
     where
-        T: util::IntOpsExt,
+        T: 'static + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         if let Some(flag) = Self::from_name_opt(input, name_matcher) {
@@ -239,7 +241,7 @@ where
     #[must_use]
     pub fn from_name_opt(input: &str, name_matcher: NameMatcher) -> Option<Self>
     where
-        T: util::IntOpsExt,
+        T: 'static + util::IntOpsExt,
         U: BitFlagsSpec<T>,
     {
         for (i, variants) in U::FLAG_NAMES.iter().enumerate().take(usize::from(T::BITS)) {
@@ -588,7 +590,7 @@ where
 /// valid for the tag. See [`BitFlag::try_from_flags`].
 impl<T, U> TryFrom<BitFlags<T, U>> for BitFlag<T, U>
 where
-    T: Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+    T: 'static + Copy + PartialEq + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
     U: BitFlagsSpec<T>,
 {
     type Error = BitFlagFromFlagsError;
@@ -650,7 +652,7 @@ where
 
 impl<T, U> Not for BitFlag<T, U>
 where
-    T: Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
+    T: 'static + Not<Output = T> + BitAnd<T, Output = T> + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Output = BitFlags<T, U>;
@@ -668,6 +670,7 @@ where
 /// is in range for `T`. See [`BitFlag::is_valid`].
 impl<T, U> fmt::Display for BitFlag<T, U>
 where
+    T: 'static,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[expect(clippy::missing_inline_in_public_items, reason = "bloats binary size")]
@@ -772,7 +775,7 @@ where
 
 impl<T, U> FromStr for BitFlag<T, U>
 where
-    T: util::IntOpsExt,
+    T: 'static + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Err = BitFlagParseError;
@@ -787,6 +790,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<T, U> serde::Serialize for BitFlag<T, U>
 where
+    T: 'static,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
@@ -836,7 +840,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de, T, U> serde::Deserialize<'de> for BitFlag<T, U>
 where
-    T: util::IntOpsExt,
+    T: 'static + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
@@ -852,7 +856,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<T, U> serde::de::Visitor<'_> for BitFlagVisitor<T, U>
 where
-    T: util::IntOpsExt,
+    T: 'static + util::IntOpsExt,
     U: ?Sized + BitFlagsSpec<T>,
 {
     type Value = BitFlag<T, U>;

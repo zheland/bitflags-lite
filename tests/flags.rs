@@ -18,8 +18,9 @@ type Perm = BitFlag<u8, PermsTag>;
 type Perms = BitFlags<u8, PermsTag>;
 
 impl BitFlagsSpec<u8> for PermsTag {
-    const VALID_BITS_MASK: u8 = (1 << 3) - 1;
+    const VALID_BITS_MASK: u8 = 0b111;
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+    const COMBINED_NAMES: &[(u8, &str)] = &[(0, "none"), (0b111, "rwx")];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 }
 
@@ -34,8 +35,9 @@ type UnnamedPerm = BitFlag<u8, UnnamedPermsTag>;
 type UnnamedPerms = BitFlags<u8, UnnamedPermsTag>;
 
 impl BitFlagsSpec<u8> for UnnamedPermsTag {
-    const VALID_BITS_MASK: u8 = (1 << 3) - 1;
+    const VALID_BITS_MASK: u8 = 0b111;
     const FLAG_NAMES: &[&[&str]] = &[];
+    const COMBINED_NAMES: &[(u8, &str)] = &[];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
 }
 
@@ -620,10 +622,17 @@ fn test_flags_from_str() {
         Perms::from_str("read | write | exec | 0x8").unwrap(),
         READ | WRITE | EXEC | Perms::from_bits_retain(0b1000)
     );
+    assert_eq!(Perms::from_str("none").unwrap(), NONE);
+    assert_eq!(Perms::from_str("rwx").unwrap(), READ | WRITE | EXEC);
+    assert_eq!(
+        Perms::from_str("none | rwx | 0x8").unwrap(),
+        READ | WRITE | EXEC | Perms::from_bits_retain(0b1000)
+    );
     assert_eq!(
         Perms::from_str("0xD").unwrap(),
         READ | EXEC | Perms::from_bits_retain(0b1000)
     );
+
     assert!(Perms::from_str("0x100").is_err());
     assert!(Perms::from_str("0xG").is_err());
     assert!(Perms::from_str("0x+D").is_err());
@@ -637,8 +646,9 @@ fn test_flags_from_case_sensitive_str() {
     type CsPerms = BitFlags<u8, CsPermsTag>;
 
     impl BitFlagsSpec<u8> for CsPermsTag {
-        const VALID_BITS_MASK: u8 = (1 << 3) - 1;
+        const VALID_BITS_MASK: u8 = 0b111;
         const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+        const COMBINED_NAMES: &[(u8, &str)] = &[];
         const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
     }
 
@@ -664,8 +674,9 @@ fn test_flags_from_case_insensitive_str() {
     type CiPerms = BitFlags<u8, CiPermsTag>;
 
     impl BitFlagsSpec<u8> for CiPermsTag {
-        const VALID_BITS_MASK: u8 = (1 << 3) - 1;
+        const VALID_BITS_MASK: u8 = 0b111;
         const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+        const COMBINED_NAMES: &[(u8, &str)] = &[];
         const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::AsciiCaseInsensitive;
     }
 
@@ -730,6 +741,7 @@ fn test_flags_skipped_flag_names() {
             &["seventh", "SEVENTH"],
             &[],
         ];
+        const COMBINED_NAMES: &[(u8, &str)] = &[];
         const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
     }
 
@@ -787,6 +799,7 @@ fn test_flags_flag_names_beyond_bits() {
             &["ninth"],
             &["tenth"],
         ];
+        const COMBINED_NAMES: &[(u8, &str)] = &[];
         const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
     }
 
