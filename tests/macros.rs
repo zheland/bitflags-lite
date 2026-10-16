@@ -61,9 +61,9 @@ fn test_macro_generated_with_gaps() {
         pub mask ALL     = [ FIRST, THIRD, TENTH ], "all";
 
         /// ALL_ALT BitFlags doc-comment.
-        pub mask ALL_ALT = FIRST.mask_or_empty()
-                         | THIRD.mask_or_empty()
-                         | TENTH.mask_or_empty();
+        pub mask ALL_ALT = FIRST.mask_or_default()
+                         | THIRD.mask_or_default()
+                         | TENTH.mask_or_default();
 
         /// NONE BitFlags doc-comment.
         pub mask NONE    = 0, "none";

@@ -156,6 +156,20 @@ fn test_flag_mask() {
 }
 
 #[test]
+fn test_flag_mask_of_default() {
+    assert_eq!(Perm::from_bit_retain(0).mask_or_default(), 0x01);
+    assert_eq!(Perm::from_bit_retain(1).mask_or_default(), 0x02);
+    assert_eq!(Perm::from_bit_retain(2).mask_or_default(), 0x04);
+    assert_eq!(Perm::from_bit_retain(3).mask_or_default(), 0x08);
+    assert_eq!(Perm::from_bit_retain(4).mask_or_default(), 0x10);
+    assert_eq!(Perm::from_bit_retain(5).mask_or_default(), 0x20);
+    assert_eq!(Perm::from_bit_retain(6).mask_or_default(), 0x40);
+    assert_eq!(Perm::from_bit_retain(7).mask_or_default(), 0x80);
+    assert_eq!(Perm::from_bit_retain(8).mask_or_default(), 0x00);
+    assert_eq!(Perm::from_bit_retain(9).mask_or_default(), 0x00);
+}
+
+#[test]
 fn test_flag_math_ops() {
     assert_eq!(READ.intersection(READ), Perms::from(READ));
     assert_eq!(READ.intersection(WRITE), NONE);

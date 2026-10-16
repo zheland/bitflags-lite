@@ -87,6 +87,15 @@ where
     where
         T: util::IntOpsExt;
 
+    /// Returns the single-bit mask for this flag, or `0` if the bit index is
+    /// outside the width of `$ty`.
+    ///
+    /// This is the const-friendly equivalent of `self.mask().unwrap_or(0)`.
+    #[must_use]
+    fn mask_or_default(&self) -> T
+    where
+        T: Default + util::IntOpsExt;
+
     /// Returns the intersection of `self` and `other`.
     ///
     /// This is a raw-bit operation.
@@ -210,6 +219,14 @@ where
         T: util::IntOpsExt,
     {
         T::ONE.checked_shl(u32::from(self.bit()))
+    }
+
+    #[inline]
+    fn mask_or_default(&self) -> T
+    where
+        T: Default + util::IntOpsExt,
+    {
+        self.mask().unwrap_or_default()
     }
 
     #[inline]
