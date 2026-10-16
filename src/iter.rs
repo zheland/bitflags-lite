@@ -1,4 +1,3 @@
-use core::any::type_name;
 use core::fmt;
 use core::iter::FusedIterator;
 use core::ops::{BitAndAssign, Not};
@@ -79,13 +78,13 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let lowest = self.0.bits().lowest_one()?;
 
-        #[expect(clippy::panic, reason = "enabled only for `debug_assertions`")]
         let Some(mask) = T::ONE.checked_shl(lowest) else {
             #[cfg(debug_assertions)]
-            panic!(
+            #[expect(clippy::panic, reason = "enabled only for `debug_assertions`")]
+            (panic!(
                 "invalid implementation of `{}`, checked_shl failed with bit from lowest_one",
-                type_name::<T>()
-            );
+                core::any::type_name::<T>()
+            ));
             #[cfg(not(debug_assertions))]
             return None;
         };
@@ -116,13 +115,13 @@ where
     fn next_back(&mut self) -> Option<Self::Item> {
         let lowest = self.0.bits().highest_one()?;
 
-        #[expect(clippy::panic, reason = "enabled only for `debug_assertions`")]
         let Some(mask) = T::ONE.checked_shl(lowest) else {
             #[cfg(debug_assertions)]
-            panic!(
+            #[expect(clippy::panic, reason = "enabled only for `debug_assertions`")]
+            (panic!(
                 "invalid implementation of `{}`, checked_shl failed with bit from lowest_one",
-                type_name::<T>()
-            );
+                core::any::type_name::<T>()
+            ));
             #[cfg(not(debug_assertions))]
             return None;
         };
