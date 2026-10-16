@@ -85,7 +85,7 @@
 //!
 //! # Examples
 //!
-//! ## With the `bitflags!` macro
+//! ## With the [`bitflags!`] macro
 //!
 //! The macro generates the tag type, the flag-set alias, the [`BitFlagsSpec`]
 //! implementation, and the named constants from one compact declaration:
