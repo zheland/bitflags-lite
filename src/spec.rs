@@ -81,22 +81,23 @@ where
     /// [`BitFlags`]: struct.BitFlags.html
     const FLAG_NAMES: &[&[&str]];
 
-    /// Names for combinations of flags, used when parsing.
+    /// Names for combinations of flags, consulted when parsing.
     ///
-    /// Each entry pairs a bit pattern with the names that should parse to it.
-    /// A combined name accepts any bit pattern that matches, whether or not
-    /// the individual bits are named in [`FLAG_NAMES`].
+    /// Each entry pairs a bit pattern with the single name that should parse
+    /// to it. When parsing, the input string is matched against all entries;
+    /// the first match wins.
     ///
-    /// This const is consulted by [`BitFlags::try_from_str`],
-    /// [`BitFlags::from_str_opt`], and the [`FromStr`](core::str::FromStr)
-    /// implementation.
-    /// It is **not** consulted by [`Display`](core::fmt::Display).
+    /// The bit pattern may include bits that are not named in
+    /// [`FLAG_NAMES`], or that are not declared as individual flags at all.
+    /// This const does not validate against
+    /// [`VALID_BITS_MASK`](Self::VALID_BITS_MASK).
+    /// Parsing preserves whatever bits the entry contains.
+    ///
+    /// This const is **not** consulted by [`Display`](core::fmt::Display).
     /// Formatting a value with multiple bits set always writes the individual
     /// flag names from [`FLAG_NAMES`], never a combined name.
     ///
     /// [`FLAG_NAMES`]: trait.BitFlagsSpec.html#associatedconstant.FLAG_NAMES
-    /// [`BitFlags::try_from_str`]: struct.BitFlags.html#method.try_from_str
-    /// [`BitFlags::from_str_opt`]: struct.BitFlags.html#method.from_str_opt
     const COMBINED_NAMES: &[(T, &str)];
 
     /// Controls whether the default [`FromStr`](core::str::FromStr) and

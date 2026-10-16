@@ -451,10 +451,14 @@ macro_rules! impl_bit_flag {
                 }
             }
 
+            /// Returns the single-bit mask for this flag, or `0` if the bit index is
+            /// outside the width of `$ty`.
+            ///
+            /// This is the const-friendly equivalent of `self.mask().unwrap_or(0)`.
             #[doc(hidden)]
             #[inline]
             #[must_use]
-            pub const fn __mask_or_zero(&self) -> $ty {
+            pub const fn mask_or_empty(&self) -> $ty {
                 if let Some(mask) = self.mask() {
                     mask
                 } else {

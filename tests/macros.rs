@@ -13,26 +13,20 @@ fn test_macro_generated_simple() {
         pub bit WRITE = 1, &["write"];
         pub bit EXEC  = 2, &["exec", "execute"];
 
-        pub mask RWX  = mask READ | WRITE | EXEC, "all";
+        pub mask RWX  = [ READ, WRITE, EXEC ], "all";
         pub mask NONE = 0, "none";
     }
 
+    assert_eq!(PermissionsTag::VALID_BITS_MASK, 0b111);
     assert_eq!(
-        <PermissionsTag as BitFlagsSpec<u32>>::VALID_BITS_MASK,
-        0b111
-    );
-    assert_eq!(
-        <PermissionsTag as BitFlagsSpec<u32>>::FLAG_NAMES,
+        PermissionsTag::FLAG_NAMES,
         &[&["read"][..], &["write"], &["exec", "execute"]]
     );
     assert_eq!(
-        <PermissionsTag as BitFlagsSpec<u32>>::COMBINED_NAMES,
+        PermissionsTag::COMBINED_NAMES,
         &[(0b111, "all"), (0, "none")]
     );
-    assert_eq!(
-        <PermissionsTag as BitFlagsSpec<u32>>::DEFAULT_NAME_MATCHER,
-        NameMatcher::Exact
-    );
+    assert_eq!(PermissionsTag::DEFAULT_NAME_MATCHER, NameMatcher::Exact);
 
     assert_eq!(READ.bit(), 0);
     assert_eq!(WRITE.bit(), 1);
@@ -42,26 +36,42 @@ fn test_macro_generated_simple() {
 }
 
 #[test]
-fn test_macro_generated_with_skips() {
+fn test_macro_generated_with_gaps() {
     bitflags_lite::bitflags! {
-        #[name_matcher(NameMatcher::AsciiCaseInsensitive)]
-        pub type Flags = BitFlags<u32, pub struct FlagsTag>;
+        #![name_matcher(NameMatcher::AsciiCaseInsensitive)]
+        /// Flags doc-comment.
+        pub type Flags = BitFlags<
+            u32,
+            /// Flags tag doc-comment.
+            pub struct FlagsTag
+        >;
 
+        /// FIRST BitFlag doc-comment.
         pub bit FIRST = 0, &["first", "1st"];
+
+        /// THIRD BitFlag doc-comment.
         pub bit THIRD = 2, &["third", "3rd"];
+
         pub bit       = 3;
+
+        /// TENTH BitFlag doc-comment.
         pub bit TENTH = 9, &["tenth", "10th"];
 
-        pub mask ALL  = mask FIRST | THIRD | TENTH, "all";
-        pub mask NONE = 0, "none";
+        /// ALL BitFlags doc-comment.
+        pub mask ALL     = [ FIRST, THIRD, TENTH ], "all";
+
+        /// ALL_ALT BitFlags doc-comment.
+        pub mask ALL_ALT = FIRST.mask_or_empty()
+                         | THIRD.mask_or_empty()
+                         | TENTH.mask_or_empty();
+
+        /// NONE BitFlags doc-comment.
+        pub mask NONE    = 0, "none";
     }
 
+    assert_eq!(FlagsTag::VALID_BITS_MASK, 0b10_0000_1101);
     assert_eq!(
-        <FlagsTag as BitFlagsSpec<u32>>::VALID_BITS_MASK,
-        0b10_0000_1101
-    );
-    assert_eq!(
-        <FlagsTag as BitFlagsSpec<u32>>::FLAG_NAMES,
+        FlagsTag::FLAG_NAMES,
         &[
             &["first", "1st"][..],
             &[],
@@ -76,11 +86,11 @@ fn test_macro_generated_with_skips() {
         ]
     );
     assert_eq!(
-        <FlagsTag as BitFlagsSpec<u32>>::COMBINED_NAMES,
+        FlagsTag::COMBINED_NAMES,
         &[(0b10_0000_0101, "all"), (0, "none")]
     );
     assert_eq!(
-        <FlagsTag as BitFlagsSpec<u32>>::DEFAULT_NAME_MATCHER,
+        FlagsTag::DEFAULT_NAME_MATCHER,
         NameMatcher::AsciiCaseInsensitive
     );
 

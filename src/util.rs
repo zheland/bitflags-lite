@@ -127,6 +127,11 @@ impl_uint_opt_ext!(i64);
 impl_uint_opt_ext!(i128);
 impl_uint_opt_ext!(isize);
 
+/// Returns the largest element of `values`, or `0` if `values` is empty.
+///
+/// Used by [`bitflags!`](crate::bitflags) expansion to size `FLAG_NAMES` to
+/// the highest declared bit index.
+/// Not part of the public API.
 #[doc(hidden)]
 #[inline]
 #[must_use]
