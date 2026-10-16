@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [0.2.0] - 2026-10-16
+### Added
+- `bitflags!` macro for defining a flag set from a compact declaration.
+  The macro generates a [`BitFlagsSpec`] implementation and named
+  constants for individual bits and masks. It does not generate a new
+  type: every flag set remains a `BitFlags<T, U>` over a user-defined
+  tag. Type aliases for `BitFlags<T, U>` and `BitFlag<T, U>` are written
+  by the user next to the macro invocation.
+- `BitFlagsSpec::COMBINED_NAMES` associated const for names that parse to
+  multi-bit values. Combined names are consulted by parsers but not by
+  `Display`, which always writes the union of individual flag names.
 
 ## [0.1.0] - 2026-10-15
 ### Added
@@ -32,4 +43,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `no_std` and `no_alloc` support.
 
 [Unreleased]: https://github.com/zheland/bitflags-lite/compare/v0.1.0...HEAD
+[0.2.0]: https://github.com/zheland/bitflags-lite/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/zheland/bitflags-lite/compare/v0.0.0...v0.1.0

@@ -84,14 +84,14 @@ See [Examples](#examples) below for both forms side by side.
 
 ```toml
 [dependencies]
-bitflags-lite = "0.1.0"
+bitflags-lite = "0.2.0"
 ```
 
 With optional features:
 
 ```toml
 [dependencies]
-bitflags-lite = { version = "0.1.0", features = [ "serde", "bytemuck" ] }
+bitflags-lite = { version = "0.2.0", features = [ "serde", "bytemuck" ] }
 ```
 
 
