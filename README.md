@@ -73,14 +73,14 @@ Design Highlights:
 
 ```toml
 [dependencies]
-bitflags-lite = "0.2.0"
+bitflags-lite = "0.3.0"
 ```
 
 With optional features:
 
 ```toml
 [dependencies]
-bitflags-lite = { version = "0.2.0", features = [ "serde", "bytemuck" ] }
+bitflags-lite = { version = "0.3.0", features = [ "serde", "bytemuck" ] }
 ```
 
 
