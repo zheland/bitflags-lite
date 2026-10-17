@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Methods `BitFlag::mask_or_empty` and `BitFlagExt::mask_or_default`.
 
+### Changed
+- Improved clarity of README and docs main page.
+
 ### Removed
 - Methods `BitFlag::mask_or_default` and `BitFlagExt::mask_or_default`.
 
