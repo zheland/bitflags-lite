@@ -111,9 +111,6 @@ normalize_docs() {
             $'^L \[(.*)\]: ([^:]*)::(?:::)+' -r $'L [$1]: $2::' \
         | $readme rg --passthru \
             $'^L \[(.*)\]: ::' -r $'L [$1]: ' \
-        | comment "Convert link methods to rust paths in README.md." \
-        | $readme rg --passthru \
-            $'^L \[(.*)\]: (.*)#method\.' -r $'L [$1]: $2$3::' \
         | comment "Remove link titles that now duplicates rust path in README.md." \
         | $readme rg --pcre2 --passthru \
             $'^L \[(.*)\]: ([^ ]*) "\\2"' -r $'L [$1]: $2' \
