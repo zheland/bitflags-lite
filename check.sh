@@ -144,6 +144,18 @@ params_sets=(
     'stable,thumbv7em-none-eabihf,'
 );
 
+echo_and_run cargo +nightly miri test --all-targets --all-features
+
+echo_and_run cargo deny --workspace --all-features check
+
+echo_and_run cargo +nightly llvm-cov --doctests --all-features --html \
+    --fail-under-functions 99 \
+    --fail-under-lines 95 \
+    --fail-under-regions 95
+
+echo_and_run env RUSTDOCFLAGS="-D rustdoc::broken_intra_doc_links" \
+    cargo +nightly doc --all-features
+
 
 for params in "${params_sets[@]}"; do
     IFS=, read -r toolchain target flags <<< "$params"
@@ -159,17 +171,5 @@ for params in "${params_sets[@]}"; do
             $flags
     fi
 done
-
-echo_and_run cargo +nightly miri test --all-targets --all-features
-
-echo_and_run cargo deny --workspace --all-features check
-
-echo_and_run cargo +nightly llvm-cov --doctests --all-features --html \
-    --fail-under-functions 99 \
-    --fail-under-lines 95 \
-    --fail-under-regions 95
-
-echo_and_run env RUSTDOCFLAGS="-D rustdoc::broken_intra_doc_links" \
-    cargo +nightly doc --all-features
 
 ok "All checks succeeded." 1>&2
