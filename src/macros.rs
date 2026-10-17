@@ -65,8 +65,8 @@
 ///   value. The special syntax is required because the macro runs in const
 ///   context, where `BitFlag` does not implement `BitOr` in a way that can be
 ///   folded into a raw integer.
-/// - `EXPR` is a bit-mask expression, for example `0` or
-///   `FIRST.mask_or_default() | SECOND.mask_or_default()`.
+/// - `EXPR` is a bit-mask expression, for example `0` or `FIRST.mask_or_empty()
+///   | SECOND.mask_or_empty()`.
 /// - `#![name_matcher(...)]` sets [`BitFlagsSpec::DEFAULT_NAME_MATCHER`] and
 ///   defaults to [`NameMatcher::Exact`].
 /// - `ATTR` is any outer attribute, including doc comments. Attributes are
@@ -206,9 +206,9 @@
 ///     };
 ///     const COMBINED_NAMES: &[(u32, &str)] = &[
 ///         (
-///             (0 | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_default(&READ)
-///                 | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_default(&WRITE)
-///                 | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_default(&EXEC)),
+///             (0 | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_empty(&READ)
+///                 | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_empty(&WRITE)
+///                 | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_empty(&EXEC)),
 ///             "all",
 ///         ),
 ///         (0, "none"),
@@ -228,9 +228,9 @@
 ///
 /// pub const RWX: bitflags_lite::BitFlags<u32, PermissionsTag> =
 ///     bitflags_lite::BitFlags::<u32, PermissionsTag>::from_bits_retain(
-///         (0 | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_default(&READ)
-///             | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_default(&WRITE)
-///             | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_default(&EXEC)),
+///         (0 | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_empty(&READ)
+///             | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_empty(&WRITE)
+///             | bitflags_lite::BitFlag::<u32, PermissionsTag>::mask_or_empty(&EXEC)),
 ///     );
 ///
 /// pub const NONE: bitflags_lite::BitFlags<u32, PermissionsTag> =
@@ -266,9 +266,9 @@
 ///     pub mask ALL     = [ FIRST, THIRD, TENTH ], "all";
 ///
 ///     /// `ALL_ALT` `BitFlags` doc-comment.
-///     pub mask ALL_ALT = FIRST.mask_or_default()
-///                      | THIRD.mask_or_default()
-///                      | TENTH.mask_or_default();
+///     pub mask ALL_ALT = FIRST.mask_or_empty()
+///                      | THIRD.mask_or_empty()
+///                      | TENTH.mask_or_empty();
 ///
 ///     /// `NONE` `BitFlags` doc-comment.
 ///     pub mask NONE    = 0, "none";
@@ -343,9 +343,9 @@
 ///     };
 ///     const COMBINED_NAMES: &[(u32, &str)] = &[
 ///         (
-///             (0 | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_default(&FIRST)
-///                 | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_default(&THIRD)
-///                 | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_default(&TENTH)),
+///             (0 | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_empty(&FIRST)
+///                 | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_empty(&THIRD)
+///                 | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_empty(&TENTH)),
 ///             "all",
 ///         ),
 ///         (0, "none"),
@@ -369,15 +369,15 @@
 /// #[doc = r" `ALL` `BitFlags` doc-comment."]
 /// pub const ALL: bitflags_lite::BitFlags<u32, FlagsTag> =
 ///     bitflags_lite::BitFlags::<u32, FlagsTag>::from_bits_retain(
-///         (0 | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_default(&FIRST)
-///             | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_default(&THIRD)
-///             | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_default(&TENTH)),
+///         (0 | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_empty(&FIRST)
+///             | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_empty(&THIRD)
+///             | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_empty(&TENTH)),
 ///     );
 ///
 /// #[doc = r" `ALL_ALT` `BitFlags` doc-comment."]
 /// pub const ALL_ALT: bitflags_lite::BitFlags<u32, FlagsTag> =
 ///     bitflags_lite::BitFlags::<u32, FlagsTag>::from_bits_retain(
-///         (FIRST.mask_or_default() | THIRD.mask_or_default() | TENTH.mask_or_default()),
+///         (FIRST.mask_or_empty() | THIRD.mask_or_empty() | TENTH.mask_or_empty()),
 ///     );
 ///
 /// #[doc = r" `NONE` `BitFlags` doc-comment."]
@@ -572,7 +572,7 @@ macro_rules! __bitflags_impl {
                 $( #[ $($meta)* ] )*
                 $vis mask $( $name )? =
                     0 $( |
-                        $crate::BitFlag::<$storage, $tag>::mask_or_default(&$value)
+                        $crate::BitFlag::<$storage, $tag>::mask_or_empty(&$value)
                     )*
                  $(, $display )?;
                 $( $tt )*

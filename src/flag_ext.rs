@@ -92,9 +92,9 @@ where
     ///
     /// This is the const-friendly equivalent of `self.mask().unwrap_or(0)`.
     #[must_use]
-    fn mask_or_default(&self) -> T
+    fn mask_or_empty(&self) -> T
     where
-        T: Default + util::IntOpsExt;
+        T: util::IntOpsExt;
 
     /// Returns the intersection of `self` and `other`.
     ///
@@ -222,11 +222,11 @@ where
     }
 
     #[inline]
-    fn mask_or_default(&self) -> T
+    fn mask_or_empty(&self) -> T
     where
-        T: Default + util::IntOpsExt,
+        T: util::IntOpsExt,
     {
-        self.mask().unwrap_or_default()
+        self.mask().unwrap_or(T::ZERO)
     }
 
     #[inline]

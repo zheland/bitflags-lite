@@ -53,8 +53,8 @@ use crate::{BitFlags, BitFlagsSpec, NameMatcher, util};
 /// - [`bit()`](Self::bit): Return the zero-based bit index.
 /// - [`mask()`](Self::mask): Return the single-bit mask, or `None` if out of
 ///   range.
-/// - [`mask_or_default()`](Self::mask_or_default): Return the single-bit mask,
-///   or `T::default` if out of range.
+/// - [`mask_or_empty()`](Self::mask_or_empty): Return the single-bit mask, or
+///   `<T as util::IntOpsExt>::ZERO` if out of range.
 /// - [`name()`](Self::name): Return the primary name, if any.
 /// - [`name_and_aliases()`](Self::name_and_aliases): Return all names and
 ///   aliases.
@@ -459,7 +459,7 @@ macro_rules! impl_bit_flag {
             /// This is the const-friendly equivalent of `self.mask().unwrap_or(0)`.
             #[inline]
             #[must_use]
-            pub const fn mask_or_default(&self) -> $ty {
+            pub const fn mask_or_empty(&self) -> $ty {
                 if let Some(mask) = self.mask() {
                     mask
                 } else {
