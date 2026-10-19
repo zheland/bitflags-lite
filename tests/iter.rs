@@ -14,6 +14,7 @@ struct PermsTag;
 
 impl BitFlagsSpec<BadInt> for PermsTag {
     const VALID_BITS_MASK: BadInt = BadInt(0xFF);
+    const DEFAULT_BITS: BadInt = BadInt(0);
     const FLAG_NAMES: &[&[&str]] = &[];
     const COMBINED_NAMES: &[(BadInt, &str)] = &[];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;

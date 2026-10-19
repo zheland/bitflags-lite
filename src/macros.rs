@@ -154,6 +154,7 @@
 /// }
 ///
 /// assert_eq!(PermissionsTag::VALID_BITS_MASK, 0b111);
+/// assert_eq!(PermissionsTag::DEFAULT_BITS, 0);
 /// assert_eq!(
 ///     PermissionsTag::FLAG_NAMES,
 ///     &[&["read"][..], &["write"], &["exec", "execute"]]
@@ -193,6 +194,7 @@
 /// impl bitflags_lite::BitFlagsSpec<u32> for PermissionsTag {
 ///     const VALID_BITS_MASK: u32 =
 ///         const { (0 as u32) | (1 as u32) << 0 | (1 as u32) << 1 | (1 as u32) << 2 };
+///     const DEFAULT_BITS: u32 = const { 0 };
 ///     const FLAG_NAMES: &[&[&str]] = const {
 ///         const MAX: usize = bitflags_lite::util::__const_max(&[0, 1, 2]);
 ///         const FLAG_NAMES: [&'static [&'static str]; MAX + 1] = const {
@@ -246,6 +248,7 @@
 ///
 /// bitflags_lite::bitflags! {
 ///     #![storage(u32)]
+///     #![default([FIRST, TENTH])]
 ///     #![name_matcher(NameMatcher::AsciiCaseInsensitive)]
 ///
 ///     /// Flags tag doc-comment.
@@ -275,6 +278,7 @@
 /// }
 ///
 /// assert_eq!(FlagsTag::VALID_BITS_MASK, 0b10_0000_1101);
+/// assert_eq!(FlagsTag::DEFAULT_BITS, 0b10_0000_0001);
 /// assert_eq!(
 ///     FlagsTag::FLAG_NAMES,
 ///     &[
@@ -329,6 +333,10 @@
 /// impl bitflags_lite::BitFlagsSpec<u32> for FlagsTag {
 ///     const VALID_BITS_MASK: u32 = const {
 ///         (0 as u32) | (1 as u32) << 0 | (1 as u32) << 2 | (1 as u32) << 3 | (1 as u32) << 9
+///     };
+///     const DEFAULT_BITS: u32 = const {
+///         (0 | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_empty(&FIRST)
+///             | bitflags_lite::BitFlag::<u32, FlagsTag>::mask_or_empty(&TENTH))
 ///     };
 ///     const FLAG_NAMES: &[&[&str]] = const {
 ///         const MAX: usize = bitflags_lite::util::__const_max(&[0, 2, 3, 9]);
@@ -403,7 +411,7 @@ macro_rules! bitflags {
     ) => {
         $crate::__bitflags_impl! {
             [ $( $tt )* ] [ $( #![ $( $bitflags_meta )* ] )* ]
-            [] [] [] [] [ $tag_name ] [] []
+            [] [] [] [] [ $tag_name ] [] [] []
         }
     };
     (
@@ -428,7 +436,7 @@ macro_rules! bitflags {
 
         $crate::__bitflags_impl! {
             [ $( $tt )* ] [ $( #![ $( $bitflags_meta )* ] )* ]
-            [] [] [] [] [ $tag_name ] [] []
+            [] [] [] [] [ $tag_name ] [] [] []
         }
     };
 }
@@ -455,11 +463,14 @@ macro_rules! bitflags {
 ///     // Parsed named masks.
 ///     [ $( $vis:vis $name:ident = $value:expr $(, $display:expr )?; )* ]
 ///
+///     // Tag typename.
+///     [ $tag:ty ]
+///
 ///     // Storage inner typename.
 ///     [ $storage:ty ]
 ///
-///     // Tag typename.
-///     [ $tag:ty ]
+///     // Default bits value.
+///     [ $default:ty ]
 ///
 ///     // Parsed name matcher.
 ///     [ $( $name_matcher:expr )? ]
@@ -468,32 +479,72 @@ macro_rules! bitflags {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __bitflags_impl {
-    // Choose default name matcher.
+    // Choose defaults.
     (
         [ $( $tt:tt )* ] []
-        [] [] [] [] [ $tag:ty ] [ $storage:ty ] []
+        [] [] [] [] [ $tag:ty ] []
+        [ $( $default:expr )? ] [ $( $name_matcher:expr )? ]
+    ) => {
+        ::core::compile_error!("`#![storage(...)]` attribute is required");
+    };
+    (
+        [ $( $tt:tt )* ] []
+        [] [] [] [] [ $tag:ty ] [ $storage:ty ] [] [ $( $name_matcher:expr )? ]
     ) => {
         $crate::__bitflags_impl! {
             [ $( $tt )* ] [] [] [] [] []
-            [ $tag ] [ $storage ] [ $crate::NameMatcher::Exact ]
+            [ $tag ] [ $storage ] [ 0 ] [ $( $name_matcher )? ]
         }
     };
     (
         [ $( $tt:tt )* ] []
-        [] [] [] [] [ $tag:ty ] [] []
+        [] [] [] [] [ $tag:ty ] [ $storage:ty ] [ $( $default:expr )? ] []
     ) => {
-        ::core::compile_error!("`#![storage(...)]` attribute is required");
+        $crate::__bitflags_impl! {
+            [ $( $tt )* ] [] [] [] [] []
+            [ $tag ] [ $storage ] [ $( $default )? ] [ $crate::NameMatcher::Exact ]
+        }
     };
 
     // Choose storage.
     (
         [ $( $tt:tt )* ]
         [ #![ storage( $storage:ty ) ] $( #![ $($meta:tt)* ] )* ]
-        [] [] [] [] [ $tag:ty ] [] [ $( $name_matcher:expr )? ]
+        [] [] [] [] [ $tag:ty ] []
+        [ $( $default:expr )? ] [ $( $name_matcher:expr )? ]
     ) => {
         $crate::__bitflags_impl! {
             [ $( $tt )* ] [ $( #![ $($meta)* ] )* ]
-            [] [] [] [] [ $tag ] [ $storage ] [ $( $name_matcher )? ]
+            [] [] [] [] [ $tag ] [ $storage ]
+            [ $( $default )? ] [ $( $name_matcher )? ]
+        }
+    };
+
+    // Choose default.
+    (
+        [ $( $tt:tt )* ]
+        [ #![ default( [ $( $value:ident ),* $(,)? ] ) ] $( #![ $($meta:tt)* ] )* ]
+        [] [] [] [] [ $tag:ty ] [ $storage:ty ]
+        [] [ $( $name_matcher:expr )? ]
+    ) => {
+        $crate::__bitflags_impl! {
+            [ $( $tt )* ] [ $( #![ $($meta)* ] )* ]
+            [] [] [] [] [ $tag ] [ $storage ]
+            [ 0 $( |
+                $crate::BitFlag::<$storage, $tag>::mask_or_empty(&$value)
+            )* ] [ $( $name_matcher )? ]
+        }
+    };
+    (
+        [ $( $tt:tt )* ]
+        [ #![ default( $default:expr ) ] $( #![ $($meta:tt)* ] )* ]
+        [] [] [] [] [ $tag:ty ] [ $( $storage:ty )? ]
+        [] [ $( $name_matcher:expr )? ]
+    ) => {
+        $crate::__bitflags_impl! {
+            [ $( $tt )* ] [ $( #![ $($meta)* ] )* ]
+            [] [] [] [] [ $tag ] [ $( $storage )? ]
+            [ $default ] [ $( $name_matcher )? ]
         }
     };
 
@@ -501,11 +552,12 @@ macro_rules! __bitflags_impl {
     (
         [ $( $tt:tt )* ]
         [ #![ name_matcher( $name_matcher:expr ) ] $( #![ $($meta:tt)* ] )* ]
-        [] [] [] [] [ $tag:ty ] [ $( $storage:ty )? ] []
+        [] [] [] [] [ $tag:ty ] [ $( $storage:ty )? ] [ $( $default:expr )? ] []
     ) => {
         $crate::__bitflags_impl! {
             [ $( $tt )* ] [ $( #![ $($meta)* ] )* ]
-            [] [] [] [] [ $tag ] [ $( $storage )? ] [ $name_matcher ]
+            [] [] [] [] [ $tag ] [ $( $storage )? ]
+            [ $( $default )? ] [ $name_matcher ]
         }
     };
 
@@ -518,7 +570,7 @@ macro_rules! __bitflags_impl {
         []
         [ $( $bits:tt )* ] [ $( $named_bits:tt )* ]
         [ $( $masks:tt )* ] [ $( $named_masks:tt )* ]
-        [ $tag:ty ] [ $storage:ty ] [ $name_matcher:expr ]
+        [ $tag:ty ] [ $storage:ty ] [ $default:expr ] [ $name_matcher:expr ]
     ) => {
         $crate::__bitflags_impl! {
             [ $( $tt )* ] []
@@ -526,7 +578,7 @@ macro_rules! __bitflags_impl {
             [ $( $named_bits )* ]
             [ $( $masks )* ]
             [ $( $named_masks )* ]
-            [ $tag ] [ $storage ] [ $name_matcher ]
+            [ $tag ] [ $storage ] [ $default ] [ $name_matcher ]
         }
     };
 
@@ -540,7 +592,7 @@ macro_rules! __bitflags_impl {
         []
         [ $( $bits:tt )* ] [ $( $named_bits:tt )* ]
         [ $( $masks:tt )* ] [ $( $named_masks:tt )* ]
-        [ $tag:ty ] [ $storage:ty ] [ $name_matcher:expr ]
+        [ $tag:ty ] [ $storage:ty ] [ $default:expr ] [ $name_matcher:expr ]
     ) => {
         $crate::__bitflags_impl! {
             [ $( $tt )* ] []
@@ -550,7 +602,7 @@ macro_rules! __bitflags_impl {
             ] ]
             [ $( $masks )* ]
             [ $( $named_masks )* ]
-            [ $tag ] [ $storage ] [ $name_matcher ]
+            [ $tag ] [ $storage ] [ $default ] [ $name_matcher ]
         }
     };
 
@@ -565,7 +617,7 @@ macro_rules! __bitflags_impl {
         []
         [ $( $bits:tt )* ] [ $( $named_bits:tt )* ]
         [ $( $masks:tt )* ] [ $( $named_masks:tt )* ]
-        [ $tag:ty ] [ $storage:ty ] [ $name_matcher:expr ]
+        [ $tag:ty ] [ $storage:ty ] [ $default:expr ] [ $name_matcher:expr ]
     ) => {
         $crate::__bitflags_impl! {
             [
@@ -580,7 +632,7 @@ macro_rules! __bitflags_impl {
             []
             [ $( $bits )* ] [ $( $named_bits )* ]
             [ $( $masks )* ] [ $( $named_masks )* ]
-            [ $tag ] [ $storage ] [ $name_matcher ]
+            [ $tag ] [ $storage ] [ $default ] [ $name_matcher ]
         }
     };
 
@@ -594,7 +646,7 @@ macro_rules! __bitflags_impl {
         []
         [ $( $bits:tt )* ] [ $( $named_bits:tt )* ]
         [ $( $masks:tt )* ] [ $( $named_masks:tt )* ]
-        [ $tag:ty ] [ $storage:ty ] [ $name_matcher:expr ]
+        [ $tag:ty ] [ $storage:ty ] [ $default:expr ] [ $name_matcher:expr ]
     ) => {
         $crate::__bitflags_impl! {
             [ $( $tt )* ] []
@@ -602,7 +654,7 @@ macro_rules! __bitflags_impl {
             [ $( $named_bits )* ]
             [ $( $masks )* [ [ $value ] [ $( $display )? ] ] ]
             [ $( $named_masks )* ]
-            [ $tag ] [ $storage ] [ $name_matcher ]
+            [ $tag ] [ $storage ] [ $default ] [ $name_matcher ]
         }
     };
 
@@ -616,7 +668,7 @@ macro_rules! __bitflags_impl {
         []
         [ $( $bits:tt )* ] [ $( $named_bits:tt )* ]
         [ $( $masks:tt )* ] [ $( $named_masks:tt )* ]
-        [ $tag:ty ] [ $storage:ty ] [ $name_matcher:expr ]
+        [ $tag:ty ] [ $storage:ty ] [ $default:expr ] [ $name_matcher:expr ]
     ) => {
         $crate::__bitflags_impl! {
             [ $( $tt )* ] []
@@ -626,7 +678,7 @@ macro_rules! __bitflags_impl {
             [ $( $named_masks )* [
                 [ $( #[ $($meta)* ] )* ] [ $vis ] [ $name ] [ $value ]
             ] ]
-            [ $tag ] [ $storage ] [ $name_matcher ]
+            [ $tag ] [ $storage ] [ $default ] [ $name_matcher ]
         }
     };
 
@@ -646,7 +698,7 @@ macro_rules! __bitflags_impl {
             [ $( #[ $($nm_meta:meta)* ] )* ]
             [ $nm_vis:vis ] [ $nm_name:ident ] [ $nm_value:expr ]
         ] )* ]
-        [ $tag:ty ] [ $storage:ty ] [ $name_matcher:expr ]
+        [ $tag:ty ] [ $storage:ty ] [ $default:expr ] [ $name_matcher:expr ]
     ) => {
         #[allow(
             trivial_numeric_casts,
@@ -659,6 +711,7 @@ macro_rules! __bitflags_impl {
             const VALID_BITS_MASK: $storage = const {
                 (0 as $storage) $( | (1 as $storage) << $b_value )*
             };
+            const DEFAULT_BITS: $storage = const { $default };
             const FLAG_NAMES: &[&[&str]] = const {
                 const MAX: usize = $crate::util::__const_max(&[ $( $b_value ),*]);
                 const FLAG_NAMES: [&'static [&'static str]; MAX + 1] = const {

@@ -165,6 +165,7 @@ struct PermissionsTag;
 
 impl BitFlagsSpec<u32> for PermissionsTag {
     const VALID_BITS_MASK: u32 = 0b111;
+    const DEFAULT_BITS: u32 = 0;
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
     const COMBINED_NAMES: &[(u32, &str)] = &[(0, "none"), (0b111, "rwx")];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
@@ -191,10 +192,11 @@ The following example deliberately fails to compile:
 ```rust,compile_fail
 use bitflags_lite::{BitFlags, BitFlagsSpec, NameMatcher};
 
-struct PermsTag;
-type Perms = BitFlags<u8, PermsTag>;
-impl BitFlagsSpec<u8> for PermsTag {
+struct PermissionsTag;
+type Permissions = BitFlags<u8, PermissionsTag>;
+impl BitFlagsSpec<u8> for PermissionsTag {
     const VALID_BITS_MASK: u8 = (1 << 3) - 1;
+    const DEFAULT_BITS: u8 = 0;
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
     const COMBINED_NAMES: &[(u8, &str)] = &[(0, "none"), (0b111, "rwx")];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::AsciiCaseInsensitive;
@@ -204,17 +206,18 @@ struct KeyboardModifiersTag;
 type KeyboardModifiers = BitFlags<u8, KeyboardModifiersTag>;
 impl BitFlagsSpec<u8> for KeyboardModifiersTag {
     const VALID_BITS_MASK: u8 = (1 << 4) - 1;
+    const DEFAULT_BITS: u8 = 0;
     const FLAG_NAMES: &[&[&str]] = &[&["Shift"], &["Ctrl"], &["Alt"], &["Meta"]];
     const COMBINED_NAMES: &[(u8, &str)] = &[];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::AsciiCaseInsensitive;
 }
 
-let rwx: Perms = Perms::try_from_bits(0b111).unwrap();
+let rwx: Permissions = Permissions::try_from_bits(0b111).unwrap();
 let keyboard_modifiers: KeyboardModifiers = rwx;
 //                                          ^^^
 // ❌ error[E0308]: mismatched types
 // expected struct `BitFlags<_, KeyboardModifiersTag>`
-//    found struct `BitFlags<_, test::PermsTag>`
+//    found struct `BitFlags<_, test::PermissionsTag>`
 ```
 
 
@@ -259,7 +262,7 @@ let keyboard_modifiers: KeyboardModifiers = rwx;
 | Format with names | ✅ Yes | ✅ Yes | ✅ Yes |
 | Parse from names | ✅ Yes | ✅ Yes | ⛔️ No |
 | Case-insensitive parsing | ✅ Configurable | ⛔️ No | ⛔️ No |
-| Custom default value | ⛔️ No | ✅ `#[default]` | ✅ `#[default]` |
+| Custom default value | ✅ `#![default]` | ✅ `#[default]` | ✅ `#[default]` |
 | Only valid bits representable | ⛔️ No | ⛔️ No | ✅ Yes |
 | Invalid bits representable | ✅ Yes | ✅ Yes | ⛔️ No |
 

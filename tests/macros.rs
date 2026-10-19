@@ -20,6 +20,7 @@ fn test_macro_generated_simple() {
     }
 
     assert_eq!(PermissionsTag::VALID_BITS_MASK, 0b111);
+    assert_eq!(PermissionsTag::DEFAULT_BITS, 0);
     assert_eq!(
         PermissionsTag::FLAG_NAMES,
         &[&["read"][..], &["write"], &["exec", "execute"]]
@@ -41,6 +42,7 @@ fn test_macro_generated_simple() {
 fn test_macro_generated_with_gaps() {
     bitflags_lite::bitflags! {
         #![storage(u32)]
+        #![default([FIRST, TENTH])]
         #![name_matcher(NameMatcher::AsciiCaseInsensitive)]
 
         /// Flags tag doc-comment.
@@ -70,6 +72,7 @@ fn test_macro_generated_with_gaps() {
     }
 
     assert_eq!(FlagsTag::VALID_BITS_MASK, 0b10_0000_1101);
+    assert_eq!(FlagsTag::DEFAULT_BITS, 0b10_0000_0001);
     assert_eq!(
         FlagsTag::FLAG_NAMES,
         &[

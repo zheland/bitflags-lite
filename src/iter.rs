@@ -47,12 +47,12 @@ where
 
 impl<T, U> Default for BitFlagsIter<T, U>
 where
-    T: Default,
+    T: util::IntOpsExt,
     U: ?Sized,
 {
     #[inline]
     fn default() -> Self {
-        Self(BitFlags::default())
+        Self(BitFlags::empty())
     }
 }
 

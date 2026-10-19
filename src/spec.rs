@@ -24,6 +24,7 @@
 ///
 /// impl BitFlagsSpec<u32> for PermissionsTag {
 ///     const VALID_BITS_MASK: u32 = 0b111;
+///     const DEFAULT_BITS: u32 = 0;
 ///     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
 ///     const COMBINED_NAMES: &[(u32, &str)] = &[(0, "none"), (0b111, "rwx")];
 ///     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
@@ -66,6 +67,21 @@ where
     /// [`BitFlags::truncate`]: struct.BitFlags.html#method.truncate
     /// [`BitFlags::complement`]: struct.BitFlags.html#method.complement
     const VALID_BITS_MASK: T;
+
+    /// The bit pattern returned by [`BitFlags::default`].
+    ///
+    /// For flag sets where zero is the natural default, set this to `0`.
+    /// For flag sets with an "on by default" semantics, set it to the
+    /// corresponding mask.
+    ///
+    /// This value is not validated against [`VALID_BITS_MASK`]; the caller may
+    /// choose to allow invalid bits in the default, matching the behavior of
+    /// [`BitFlags::from_bits_retain`].
+    ///
+    /// [`BitFlags::default`]: struct.BitFlags.html#method.default
+    /// [`BitFlags::from_bits_retain`]: struct.BitFlags.html#method.from_bits_retain
+    /// [`VALID_BITS_MASK`]: trait.BitFlagsSpec.html#associatedconstant.VALID_BITS_MASK
+    const DEFAULT_BITS: T;
 
     /// A slice indexed by bit position, where each element contains the names
     /// associated with that bit.

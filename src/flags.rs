@@ -43,6 +43,7 @@ use crate::{BitFlag, BitFlagsIter, BitFlagsSpec, NameMatcher, util};
 ///
 /// impl BitFlagsSpec<u32> for PermissionsTag {
 ///     const VALID_BITS_MASK: u32 = 0b111;
+///     const DEFAULT_BITS: u32 = 0;
 ///     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
 ///     const COMBINED_NAMES: &[(u32, &str)] = &[(0, "none"), (0b111, "rwx")];
 ///     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
@@ -167,6 +168,26 @@ where
         U: BitFlagsSpec<T>,
     {
         Self(U::VALID_BITS_MASK, PhantomData)
+    }
+
+    /// Returns the tag-defined default value,
+    /// [`BitFlagsSpec::DEFAULT_BITS`].
+    ///
+    /// This is the `const`-callable equivalent of [`Default::default`].
+    /// The `Default` implementation for [`BitFlags`] returns the same value, so
+    /// `const_default()` and `default()` agree whenever both are available.
+    ///
+    /// The returned value is not validated against
+    /// [`BitFlagsSpec::VALID_BITS_MASK`]; it may contain invalid bits if the
+    /// spec's [`DEFAULT_BITS`](BitFlagsSpec::DEFAULT_BITS) does.
+    #[inline]
+    #[must_use]
+    pub const fn const_default() -> Self
+    where
+        T: 'static,
+        U: BitFlagsSpec<T>,
+    {
+        Self(U::DEFAULT_BITS, PhantomData)
     }
 
     /// Creates a flag set from raw bits without validation.
@@ -761,12 +782,12 @@ where
 
 impl<T, U> Default for BitFlags<T, U>
 where
-    T: Default,
-    U: ?Sized,
+    T: 'static,
+    U: ?Sized + BitFlagsSpec<T>,
 {
     #[inline]
     fn default() -> Self {
-        Self(T::default(), PhantomData)
+        Self(U::DEFAULT_BITS, PhantomData)
     }
 }
 

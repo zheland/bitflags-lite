@@ -19,6 +19,7 @@ type Perms = BitFlags<u8, PermsTag>;
 
 impl BitFlagsSpec<u8> for PermsTag {
     const VALID_BITS_MASK: u8 = 0b111;
+    const DEFAULT_BITS: u8 = 0;
     const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
     const COMBINED_NAMES: &[(u8, &str)] = &[(0, "none"), (0b111, "rwx")];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
@@ -36,6 +37,7 @@ type UnnamedPerms = BitFlags<u8, UnnamedPermsTag>;
 
 impl BitFlagsSpec<u8> for UnnamedPermsTag {
     const VALID_BITS_MASK: u8 = 0b111;
+    const DEFAULT_BITS: u8 = 0;
     const FLAG_NAMES: &[&[&str]] = &[];
     const COMBINED_NAMES: &[(u8, &str)] = &[];
     const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
@@ -409,11 +411,44 @@ fn test_flags_hash() {
 
 #[test]
 fn test_flags_default() {
+    #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug)]
+    struct PermsRwDefaultTag;
+    type PermsRwDefault = BitFlags<u8, PermsRwDefaultTag>;
+
+    impl BitFlagsSpec<u8> for PermsRwDefaultTag {
+        const VALID_BITS_MASK: u8 = 0b111;
+        const DEFAULT_BITS: u8 = 0b011;
+        const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
+        const COMBINED_NAMES: &[(u8, &str)] = &[(0, "none"), (0b111, "rwx")];
+        const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
+    }
+
+    const FLAGS: Perms = Perms::const_default();
+    const FLAGS_RW_DEFAULT: PermsRwDefault = PermsRwDefault::const_default();
+
+    assert!(FLAGS.is_empty());
+    assert_eq!(FLAGS.bits(), 0);
+    assert_eq!(FLAGS_RW_DEFAULT.bits(), 0b011);
+
     let flags = Perms::default();
     assert!(flags.is_empty());
     assert_eq!(flags.bits(), 0);
 
+    let flags = Perms::const_default();
+    assert!(flags.is_empty());
+    assert_eq!(flags.bits(), 0);
+
+    let flags = PermsRwDefault::default();
+    assert_eq!(flags.bits(), 0b011);
+
+    let flags = PermsRwDefault::const_default();
+    assert_eq!(flags.bits(), 0b011);
+
     let mut iter = BitFlagsIter::<u8, PermsTag>::default();
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.next(), None);
+
+    let mut iter = BitFlagsIter::<u8, PermsRwDefaultTag>::default();
     assert_eq!(iter.len(), 0);
     assert_eq!(iter.next(), None);
 }
@@ -647,6 +682,7 @@ fn test_flags_from_case_sensitive_str() {
 
     impl BitFlagsSpec<u8> for CsPermsTag {
         const VALID_BITS_MASK: u8 = 0b111;
+        const DEFAULT_BITS: u8 = 0;
         const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
         const COMBINED_NAMES: &[(u8, &str)] = &[];
         const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::Exact;
@@ -675,6 +711,7 @@ fn test_flags_from_case_insensitive_str() {
 
     impl BitFlagsSpec<u8> for CiPermsTag {
         const VALID_BITS_MASK: u8 = 0b111;
+        const DEFAULT_BITS: u8 = 0;
         const FLAG_NAMES: &[&[&str]] = &[&["read"], &["write"], &["exec", "execute"]];
         const COMBINED_NAMES: &[(u8, &str)] = &[];
         const DEFAULT_NAME_MATCHER: NameMatcher = NameMatcher::AsciiCaseInsensitive;
@@ -731,6 +768,7 @@ fn test_flags_skipped_flag_names() {
 
     impl BitFlagsSpec<u8> for FlagsTag {
         const VALID_BITS_MASK: u8 = 0b1111_1111;
+        const DEFAULT_BITS: u8 = 0;
         const FLAG_NAMES: &[&[&str]] = &[
             &[],
             &["second"],
@@ -787,6 +825,7 @@ fn test_flags_flag_names_beyond_bits() {
 
     impl BitFlagsSpec<u8> for FlagsTag {
         const VALID_BITS_MASK: u8 = 0b1111_1111;
+        const DEFAULT_BITS: u8 = 0;
         const FLAG_NAMES: &[&[&str]] = &[
             &["first"],
             &["second"],
