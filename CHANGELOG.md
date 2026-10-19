@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `BitFlagsSpec::DEFAULT_BITS` associated const for names that specified the bit
   pattern returned by `BitFlags::default`.
+- `BitFlags` operations with single `BitFlag`: `has`, `insert_flag`,
+  `remove_flag`, `toggle_flag`, `set_flag`.
 
 ## [0.3.0] - 2026-10-17
 ### Added

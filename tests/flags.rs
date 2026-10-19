@@ -198,6 +198,14 @@ fn test_flags_contains() {
 }
 
 #[test]
+fn test_flags_has() {
+    assert!(Perms::from(READ).has(READ));
+    assert!(!Perms::from(READ).has(WRITE));
+    assert!(!Perms::from(!READ).has(READ));
+    assert!(Perms::from(!READ).has(WRITE));
+}
+
+#[test]
 fn test_flags_truncate() {
     let mut flags = Perms::from_bits_retain(0b1111_1111);
     assert_eq!(
@@ -217,33 +225,57 @@ fn test_flags_truncate() {
 fn test_flags_insert_remove_toggle_set() {
     let mut flags = NONE;
 
-    flags.insert(READ.into());
-    assert_eq!(flags, READ);
-    flags.insert(READ.into());
-    assert_eq!(flags, READ);
-    flags.remove(READ.into());
-    assert_eq!(flags, NONE);
-    flags.remove(READ.into());
-    assert_eq!(flags, NONE);
-    flags.toggle(READ.into());
-    assert_eq!(flags, READ);
-
-    flags.insert(WRITE.into());
+    flags.insert(READ | WRITE);
     assert_eq!(flags, READ | WRITE);
-    flags.remove(WRITE.into());
-    assert_eq!(flags, READ);
-    flags.toggle(WRITE.into());
+    flags.insert(WRITE | EXEC);
+    assert_eq!(flags, READ | WRITE | EXEC);
+    flags.remove(READ | WRITE);
+    assert_eq!(flags, EXEC);
+    flags.remove(WRITE | EXEC);
+    assert_eq!(flags, NONE);
+    flags.toggle(READ | WRITE);
     assert_eq!(flags, READ | WRITE);
-    flags.toggle(READ.into());
-    assert_eq!(flags, WRITE);
+    flags.toggle(WRITE | EXEC);
+    assert_eq!(flags, READ | EXEC);
 
-    flags.set(EXEC.into(), false);
-    assert_eq!(flags, WRITE);
-    flags.set(EXEC.into(), true);
+    flags.set(READ | WRITE, false);
+    assert_eq!(flags, EXEC);
+    flags.set(WRITE | EXEC, true);
     assert_eq!(flags, WRITE | EXEC);
 
-    flags.toggle(READ | WRITE | EXEC);
+    flags.clear();
+    assert_eq!(flags, NONE);
+}
+
+#[test]
+fn test_flags_insert_remove_toggle_set_flag() {
+    let mut flags = NONE;
+
+    flags.insert_flag(READ);
     assert_eq!(flags, READ);
+    flags.insert_flag(READ);
+    assert_eq!(flags, READ);
+    flags.remove_flag(READ);
+    assert_eq!(flags, NONE);
+    flags.remove_flag(READ);
+    assert_eq!(flags, NONE);
+    flags.toggle_flag(READ);
+    assert_eq!(flags, READ);
+
+    flags.insert_flag(WRITE);
+    assert_eq!(flags, READ | WRITE);
+    flags.remove_flag(WRITE);
+    assert_eq!(flags, READ);
+    flags.toggle_flag(WRITE);
+    assert_eq!(flags, READ | WRITE);
+    flags.toggle_flag(READ);
+    assert_eq!(flags, WRITE);
+
+    flags.set_flag(EXEC, false);
+    assert_eq!(flags, WRITE);
+    flags.set_flag(EXEC, true);
+    assert_eq!(flags, WRITE | EXEC);
+
     flags.clear();
     assert_eq!(flags, NONE);
 }

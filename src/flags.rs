@@ -90,10 +90,16 @@ use crate::{BitFlag, BitFlagsIter, BitFlagsSpec, NameMatcher, util};
 /// - [`intersects()`](Self::intersects): Return `true` if any bits are shared.
 /// - [`contains()`](Self::contains): Return `true` if all bits of another set
 ///   are present.
+/// - [`has()`](Self::has): Return `true` if the bit of a [`BitFlag`] is set.
 /// - [`insert()`](Self::insert): Add all bits of another set.
+/// - [`insert_flag()`](Self::insert_flag): Add the bit of a [`BitFlag`].
 /// - [`remove()`](Self::remove): Remove all bits of another set.
+/// - [`remove_flag()`](Self::remove_flag): Remove the bit of a [`BitFlag`].
 /// - [`toggle()`](Self::toggle): Flip all bits of another set.
+/// - [`toggle_flag()`](Self::toggle_flag): Flip the bit of a [`BitFlag`].
 /// - [`set()`](Self::set): Insert or remove bits based on a boolean.
+/// - [`set_flag()`](Self::set_flag): Insert or remove the bit of a [`BitFlag`]
+///   based on a boolean.
 /// - [`clear()`](Self::clear): Remove all bits, valid and invalid.
 /// - [`truncate()`](Self::truncate): Remove all invalid bits.
 /// - [`intersection()`](Self::intersection): Return the bits set in both sets.
@@ -515,14 +521,16 @@ macro_rules! impl_bit_flags {
                 (self.0 & other.0) == other.0
             }
 
-            /// Inserts all bits from `other`.
+            /// Returns `true` if the single bit of `bit` is set in `self`.
             ///
-            /// This is a raw-bit operation.
-            /// It does not validate or clear invalid bits.
-            /// Inserting `other` can introduce invalid bits into `self`.
+            /// This is the single-bit counterpart to [`BitFlags::contains`].
+            /// It compares raw bits.
+            /// Invalid bits participate in the comparison if they are present.
+            /// A bit index outside the width of `T` always returns `false`.
             #[inline]
-            pub const fn insert(&mut self, other: Self) {
-                self.0 |= other.0;
+            #[must_use]
+            pub const fn has(&self, other: BitFlag<$ty, U>) -> bool {
+                (self.0 & other.mask_or_empty()) != 0
             }
 
             /// Removes all bits from `self`, including any invalid bits.
@@ -546,6 +554,27 @@ macro_rules! impl_bit_flags {
                 self.0 &= U::VALID_BITS_MASK
             }
 
+            /// Inserts all bits from `other`.
+            ///
+            /// This is a raw-bit operation.
+            /// It does not validate or clear invalid bits.
+            /// Inserting `other` can introduce invalid bits into `self`.
+            #[inline]
+            pub const fn insert(&mut self, other: Self) {
+                self.0 |= other.0;
+            }
+
+            /// Inserts the single bit of `bit`.
+            ///
+            /// This is the single-bit counterpart to [`BitFlags::insert`].
+            /// It is a raw-bit operation.
+            /// It does not validate or clear invalid bits.
+            /// Inserting `other` can introduce invalid bits into `self`.
+            #[inline]
+            pub const fn insert_flag(&mut self, other: BitFlag<$ty, U>) {
+                self.0 |= other.mask_or_empty();
+            }
+
             /// Removes all bits from `other`.
             ///
             /// This is a raw-bit operation.
@@ -556,6 +585,17 @@ macro_rules! impl_bit_flags {
                 self.0 &= !other.0;
             }
 
+            /// Removes the single bit of `bit`.
+            ///
+            /// This is the single-bit counterpart to [`BitFlags::remove`].
+            /// It is a raw-bit operation.
+            /// It cannot introduce new bits, but it does not clear any other
+            /// invalid bits that may already be present.
+            #[inline]
+            pub const fn remove_flag(&mut self, other: BitFlag<$ty, U>) {
+                self.0 &= !other.mask_or_empty();
+            }
+
             /// Toggles all bits from `other`.
             ///
             /// This is a raw-bit operation.
@@ -564,6 +604,17 @@ macro_rules! impl_bit_flags {
             #[inline]
             pub const fn toggle(&mut self, other: Self) {
                 self.0 ^= other.0;
+            }
+
+            /// Toggles the single bit of `bit`.
+            ///
+            /// This is the single-bit counterpart to [`BitFlags::toggle`].
+            /// It is a raw-bit operation.
+            /// It does not validate or clear invalid bits.
+            /// Toggling `other` can introduce invalid bits into `self`.
+            #[inline]
+            pub const fn toggle_flag(&mut self, other: BitFlag<$ty, U>) {
+                self.0 ^= other.mask_or_empty();
             }
 
             /// Inserts `other` if `value` is `true`, or removes `other` if
@@ -577,6 +628,21 @@ macro_rules! impl_bit_flags {
                     self.insert(other)
                 } else {
                     self.remove(other)
+                }
+            }
+
+            /// Inserts the single bit of `bit` if `value` is `true`, or removes
+            /// it if `value` is `false`.
+            ///
+            /// This is the single-bit counterpart to [`BitFlags::set`].
+            /// It is a raw-bit operation and follows the same invalid-bit
+            /// behavior as [`BitFlags::insert`] and [`BitFlags::remove`].
+            #[inline]
+            pub const fn set_flag(&mut self, other: BitFlag<$ty, U>, value: bool) {
+                if value {
+                    self.insert_flag(other)
+                } else {
+                    self.remove_flag(other)
                 }
             }
 

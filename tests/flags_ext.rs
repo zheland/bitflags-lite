@@ -308,6 +308,17 @@ fn test_flags_ext_contains() {
 }
 
 #[test]
+fn test_flags_ext_has() {
+    let read: Perm = Perm::try_from_bit(0).unwrap();
+    let write: Perm = Perm::try_from_bit(1).unwrap();
+
+    assert!(Perms::from(read).has(read));
+    assert!(!Perms::from(read).has(write));
+    assert!(!Perms::from(!read).has(read));
+    assert!(Perms::from(!read).has(write));
+}
+
+#[test]
 fn test_flags_ext_truncate() {
     let read: Perm = Perm::try_from_bit(0).unwrap();
     let write: Perm = Perm::try_from_bit(1).unwrap();
@@ -338,33 +349,61 @@ fn test_flags_ext_insert_remove_toggle_set() {
 
     let mut flags = NONE;
 
-    flags.insert(read.into());
-    assert_eq!(flags, read);
-    flags.insert(read.into());
-    assert_eq!(flags, read);
-    flags.remove(read.into());
-    assert_eq!(flags, NONE);
-    flags.remove(read.into());
-    assert_eq!(flags, NONE);
-    flags.toggle(read.into());
-    assert_eq!(flags, read);
-
-    flags.insert(write.into());
+    flags.insert(read | write);
     assert_eq!(flags, read | write);
-    flags.remove(write.into());
-    assert_eq!(flags, read);
-    flags.toggle(write.into());
+    flags.insert(write | exec);
+    assert_eq!(flags, read | write | exec);
+    flags.remove(read | write);
+    assert_eq!(flags, exec);
+    flags.remove(write | exec);
+    assert_eq!(flags, NONE);
+    flags.toggle(read | write);
     assert_eq!(flags, read | write);
-    flags.toggle(read.into());
-    assert_eq!(flags, write);
+    flags.toggle(write | exec);
+    assert_eq!(flags, read | exec);
 
-    flags.set(exec.into(), false);
-    assert_eq!(flags, write);
-    flags.set(exec.into(), true);
+    flags.set(read | write, false);
+    assert_eq!(flags, exec);
+    flags.set(write | exec, true);
     assert_eq!(flags, write | exec);
 
-    flags.toggle(read | write | exec);
+    flags.clear();
+    assert_eq!(flags, NONE);
+}
+
+#[test]
+fn test_flags_ext_insert_remove_toggle_set_flag() {
+    let read: Perm = Perm::try_from_bit(0).unwrap();
+    let write: Perm = Perm::try_from_bit(1).unwrap();
+    let exec: Perm = Perm::try_from_bit(2).unwrap();
+
+    let mut flags = NONE;
+
+    flags.insert_flag(read);
     assert_eq!(flags, read);
+    flags.insert_flag(read);
+    assert_eq!(flags, read);
+    flags.remove_flag(read);
+    assert_eq!(flags, NONE);
+    flags.remove_flag(read);
+    assert_eq!(flags, NONE);
+    flags.toggle_flag(read);
+    assert_eq!(flags, read);
+
+    flags.insert_flag(write);
+    assert_eq!(flags, read | write);
+    flags.remove_flag(write);
+    assert_eq!(flags, read);
+    flags.toggle_flag(write);
+    assert_eq!(flags, read | write);
+    flags.toggle_flag(read);
+    assert_eq!(flags, write);
+
+    flags.set_flag(exec, false);
+    assert_eq!(flags, write);
+    flags.set_flag(exec, true);
+    assert_eq!(flags, write | exec);
+
     flags.clear();
     assert_eq!(flags, NONE);
 }

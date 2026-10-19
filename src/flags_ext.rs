@@ -1,6 +1,6 @@
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
-use crate::{BitFlag, BitFlags, BitFlagsSpec, util};
+use crate::{BitFlag, BitFlagExt, BitFlags, BitFlagsSpec, util};
 
 /// Extension trait providing generic, non-const equivalents of the
 /// type-specific inherent methods on [`BitFlags`].
@@ -137,6 +137,17 @@ where
     where
         T: Copy + PartialEq + BitAnd<T, Output = T>;
 
+    /// Returns `true` if the single bit of `bit` is set in `self`.
+    ///
+    /// This is the single-bit counterpart to [`BitFlags::contains`].
+    /// It compares raw bits.
+    /// Invalid bits participate in the comparison if they are present.
+    /// A bit index outside the width of `T` always returns `false`.
+    #[must_use]
+    fn has(&self, other: BitFlag<T, U>) -> bool
+    where
+        T: Copy + PartialEq + BitAnd<T, Output = T> + util::IntOpsExt;
+
     /// Removes all bits from `self`, including any invalid bits.
     ///
     /// This is equivalent to assigning [`BitFlags::empty`] to `self`.
@@ -161,6 +172,16 @@ where
     where
         T: Copy + BitOrAssign<T>;
 
+    /// Inserts the single bit of `bit`.
+    ///
+    /// This is the single-bit counterpart to [`BitFlags::insert`].
+    /// It is a raw-bit operation.
+    /// It does not validate or clear invalid bits.
+    /// Inserting `other` can introduce invalid bits into `self`.
+    fn insert_flag(&mut self, other: BitFlag<T, U>)
+    where
+        T: Copy + BitOrAssign<T> + util::IntOpsExt;
+
     /// Removes all bits from `other`.
     ///
     /// This is a raw-bit operation.
@@ -169,6 +190,16 @@ where
     fn remove(&mut self, other: Self)
     where
         T: Copy + Not<Output = T> + BitAndAssign<T>;
+
+    /// Removes the single bit of `bit`.
+    ///
+    /// This is the single-bit counterpart to [`BitFlags::remove`].
+    /// It is a raw-bit operation.
+    /// It cannot introduce new bits, but it does not clear any other
+    /// invalid bits that may already be present.
+    fn remove_flag(&mut self, other: BitFlag<T, U>)
+    where
+        T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt;
 
     /// Toggles all bits from `other`.
     ///
@@ -179,6 +210,16 @@ where
     where
         T: Copy + BitXorAssign<T>;
 
+    /// Toggles the single bit of `bit`.
+    ///
+    /// This is the single-bit counterpart to [`BitFlags::toggle`].
+    /// It is a raw-bit operation.
+    /// It does not validate or clear invalid bits.
+    /// Toggling `other` can introduce invalid bits into `self`.
+    fn toggle_flag(&mut self, other: BitFlag<T, U>)
+    where
+        T: Copy + BitXorAssign<T> + util::IntOpsExt;
+
     /// Inserts `other` if `value` is `true`, or removes `other` if
     /// `value` is `false`.
     ///
@@ -187,6 +228,16 @@ where
     fn set(&mut self, other: Self, value: bool)
     where
         T: Copy + Not<Output = T> + BitAndAssign<T> + BitOrAssign<T>;
+
+    /// Inserts the single bit of `bit` if `value` is `true`, or removes
+    /// it if `value` is `false`.
+    ///
+    /// This is the single-bit counterpart to [`BitFlags::set`].
+    /// It is a raw-bit operation and follows the same invalid-bit
+    /// behavior as [`BitFlags::insert`] and [`BitFlags::remove`].
+    fn set_flag(&mut self, other: BitFlag<T, U>, value: bool)
+    where
+        T: Copy + Not<Output = T> + BitAndAssign<T> + BitOrAssign<T> + util::IntOpsExt;
 
     /// Returns the intersection of `self` and `other`.
     ///
@@ -334,6 +385,14 @@ where
     }
 
     #[inline]
+    fn has(&self, other: BitFlag<T, U>) -> bool
+    where
+        T: Copy + PartialEq + BitAnd<T, Output = T> + util::IntOpsExt,
+    {
+        (self.bits() & other.mask_or_empty()) != T::ZERO
+    }
+
+    #[inline]
     fn clear(&mut self)
     where
         T: util::IntOpsExt,
@@ -359,11 +418,27 @@ where
     }
 
     #[inline]
+    fn insert_flag(&mut self, other: BitFlag<T, U>)
+    where
+        T: Copy + BitOrAssign<T> + util::IntOpsExt,
+    {
+        *self.bits_mut() |= other.mask_or_empty();
+    }
+
+    #[inline]
     fn remove(&mut self, other: Self)
     where
         T: Copy + Not<Output = T> + BitAndAssign<T>,
     {
         *self.bits_mut() &= !other.bits();
+    }
+
+    #[inline]
+    fn remove_flag(&mut self, other: BitFlag<T, U>)
+    where
+        T: Copy + Not<Output = T> + BitAndAssign<T> + util::IntOpsExt,
+    {
+        *self.bits_mut() &= !other.mask_or_empty();
     }
 
     #[inline]
@@ -375,6 +450,14 @@ where
     }
 
     #[inline]
+    fn toggle_flag(&mut self, other: BitFlag<T, U>)
+    where
+        T: Copy + BitXorAssign<T> + util::IntOpsExt,
+    {
+        *self.bits_mut() ^= other.mask_or_empty();
+    }
+
+    #[inline]
     fn set(&mut self, other: Self, value: bool)
     where
         T: Copy + Not<Output = T> + BitAndAssign<T> + BitOrAssign<T>,
@@ -383,6 +466,18 @@ where
             self.insert(other);
         } else {
             self.remove(other);
+        }
+    }
+
+    #[inline]
+    fn set_flag(&mut self, other: BitFlag<T, U>, value: bool)
+    where
+        T: Copy + Not<Output = T> + BitAndAssign<T> + BitOrAssign<T> + util::IntOpsExt,
+    {
+        if value {
+            self.insert_flag(other);
+        } else {
+            self.remove_flag(other);
         }
     }
 
